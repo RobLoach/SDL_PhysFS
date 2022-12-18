@@ -1,8 +1,0 @@
-[submodule "vendor/physfs"]
-	path = vendor/physfs
-	url = https://github.com/icculus/physfs.git
-	ignore = dirty
-[submodule "vendor/SDL"]
-	path = vendor/SDL
-	url = https://github.com/libsdl-org/SDL.git
-	ignore = dirty
