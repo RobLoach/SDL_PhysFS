@@ -1,11 +1,34 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.11)
+project(SDL_physfs
+    DESCRIPTION "SDL_physfs: Load SDL assets through physfs."
+    HOMEPAGE_URL "https://github.com/robloach/SDL_physfs"
+    VERSION 0.0.1
+    LANGUAGES C
+)
 
-project(SDL_physfs)
+# Options
+if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(SDL_PHYSFS_IS_MAIN TRUE)
+else()
+    set(SDL_PHYSFS_IS_MAIN FALSE)
+endif()
+option(SDL_PHYSFS_BUILD_EXAMPLES "Examples" ${SDL_PHYSFS_IS_MAIN})
 
-find_package(SDL2 REQUIRED)
 
-add_executable(SDL_physfs_example example/main.cpp)
-target_link_libraries(SDL_physfs_example ${SDL2_LIBRARIES})
-target_include_directories(SDL_physfs_example ${SDL2_INCLUDE_DIRS})
+# SDL_physfs
+add_subdirectory(include)
 
-add_library(SDL_physfs)
+# Examples
+if (SDL_PHYSFS_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+
+    # Testing
+    include(CTest)
+    enable_testing()
+    if (BUILD_TESTING)
+        # set(CTEST_CUSTOM_TESTS_IGNORE
+        #     pkg-config--static
+        # )
+        add_subdirectory(test)
+    endif()
+endif()
