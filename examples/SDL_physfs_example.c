@@ -18,14 +18,22 @@ int main() {
     SDL_PhysFS_Mount("resources", "res");
 
     // Load the BMP from the SDL_RWops.
-    SDL_Surface* bmp = SDL_PhysFS_LoadBMP("res/test-image.bmp");
-
-    // Create a texture from the surface.
+    SDL_Surface* bmp = SDL_PhysFS_LoadBMP("res/test.bmp");
 	SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, bmp);
-
     const int textureWidth = bmp->w;
     const int textureHeight = bmp->h;
 	SDL_FreeSurface(bmp);
+
+    // Load WAV
+    SDL_AudioSpec wavSpec;
+    Uint32 wavLength;
+    Uint8 *wavBuffer;
+    SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength);
+    SDL_AudioDeviceID deviceId = SDL_OpenAudioDevice(NULL, 0, &wavSpec, NULL, 0);
+
+    // Play the wav
+    SDL_QueueAudio(deviceId, wavBuffer, wavLength);
+    SDL_PauseAudioDevice(deviceId, 0);
 
     int quit = 0;
     SDL_Event event;
@@ -36,9 +44,15 @@ int main() {
                 case SDL_QUIT:
                     quit = 1;
                     break;
-                case SDL_KEYDOWN:
-                    if (event.key.keysym.sym == SDLK_ESCAPE) {
-                        quit = 1;
+                case SDL_KEYUP:
+                    switch (event.key.keysym.sym) {
+                        case SDLK_ESCAPE:
+                            quit = 1;
+                        break;
+                        case SDLK_SPACE:
+                            SDL_QueueAudio(deviceId, wavBuffer, wavLength);
+                            SDL_PauseAudioDevice(deviceId, 0);
+                        break;
                     }
                     break;
             }
@@ -55,6 +69,9 @@ int main() {
 		SDL_RenderCopy(renderer, tex, NULL, &destination);
 		SDL_RenderPresent(renderer);
     }
+
+    SDL_FreeWAV(wavBuffer);
+    SDL_CloseAudioDevice(deviceId);
 
     SDL_PhysFS_Quit();
 	SDL_DestroyTexture(tex);

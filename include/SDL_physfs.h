@@ -6,9 +6,7 @@ extern "C" {
 #endif
 
 #include <SDL2/SDL.h>
-#include "physfs.h"
 
-// Declarations
 int SDL_PhysFS_Init();
 int SDL_PhysFS_Quit();
 int SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
@@ -16,6 +14,8 @@ int SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, cons
 int SDL_PhysFS_Unmount(const char* oldDir);
 SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
+SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
+void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 
 #ifdef __cplusplus
 }
@@ -31,7 +31,7 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 extern "C" {
 #endif
 
-// Definitions
+#include "physfs.h"
 
 int SDL_PhysFS_SetLastError(const char* functionName) {
     int error = PHYSFS_getLastErrorCode();
@@ -102,7 +102,7 @@ int SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, cons
         return SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
     }
 
-    if (PHYSFS_mountMemory(fileData, dataSize, 0, newDir, mountPoint, 1) == 0) {
+    if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, 0, newDir, mountPoint, 1) == 0) {
         return SDL_PhysFS_SetLastError("SDL_PhysFS_MountFromMemory");
     }
 
@@ -219,7 +219,8 @@ SDL_RWops *SDL_PhysFS_RWopsCreate(PHYSFS_File *handle) {
     SDL_RWops *retval = NULL;
 
     if (handle == NULL) {
-        SDL_SetError("PHYSFS: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
+        SDL_PhysFS_SetLastError("SDL_PhysFS_RWopsCreate");
+        //SDL_SetError("PHYSFS: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
     }
     else {
         retval = SDL_AllocRW();
@@ -251,6 +252,47 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
         return NULL;
     }
     return SDL_LoadBMP_RW(rwops, 1);
+}
+
+SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len) {
+    SDL_RWops* rwops = SDL_PhysFS_RWFromFile(filename);
+    if (rwops == NULL) {
+        return NULL;
+    }
+    return SDL_LoadWAV_RW(rwops, 1, spec, audio_buf, audio_len);
+}
+
+void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
+    void* handle = PHYSFS_openRead(filename);
+    if (handle == 0) {
+        SDL_PhysFS_SetLastError("SDL_PhysFS_LoadFile");
+        *datasize = 0;
+        return 0;
+    }
+
+    // Check to see how large the file is.
+    PHYSFS_sint64 size = PHYSFS_fileLength(handle);
+    if (size <= 0) {
+        *datasize = 0;
+        PHYSFS_close(handle);
+        return 0;
+    }
+
+    // Read the file, return if it's empty.
+    void* buffer = SDL_malloc((size_t)size);
+    PHYSFS_sint64 read = PHYSFS_readBytes(handle, buffer, (PHYSFS_uint64)size);
+    if (read < 0) {
+        *datasize = 0;
+        SDL_free(buffer);
+        SDL_PhysFS_SetLastError("SDL_PhysFS_LoadFile");
+        PHYSFS_close(handle);
+        return 0;
+    }
+
+    // Close the file handle, and return the bytes read and the buffer.
+    PHYSFS_close(handle);
+    *datasize = (size_t)read;
+    return buffer;
 }
 
 #ifdef __cplusplus
