@@ -180,7 +180,7 @@ size_t SDL_PhysFS_RWopsRead(struct SDL_RWops *rw, void *ptr, size_t size, size_t
     const PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, readlen);
     if (rc != ((PHYSFS_sint64) readlen)) {
         if (!PHYSFS_eof(handle)){
-            return SDL_SetError("PhysicsFS error: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
+            return (size_t)SDL_SetError("PhysicsFS error: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
         }
     } 
 
