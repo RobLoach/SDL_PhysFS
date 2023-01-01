@@ -1,3 +1,6 @@
+set(SDL_SHARED FALSE)
+set(SDL2_DISABLE_UNINSTALL TRUE)
+
 include(FetchContent)
 FetchContent_Declare(
     SDL2Source

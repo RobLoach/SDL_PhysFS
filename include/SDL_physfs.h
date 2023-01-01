@@ -7,11 +7,11 @@ extern "C" {
 
 #include <SDL2/SDL.h>
 
-int SDL_PhysFS_Init();
-int SDL_PhysFS_Quit();
-int SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
-int SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
-int SDL_PhysFS_Unmount(const char* oldDir);
+SDL_bool SDL_PhysFS_Init();
+SDL_bool SDL_PhysFS_Quit();
+SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
+SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
+SDL_bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
@@ -42,29 +42,31 @@ int SDL_PhysFS_SetLastError(const char* functionName) {
 /**
  * Initialize the PhysFS virtual file system.
  *
- * @return 0 on success, non-zero otherwise.
+ * @return SDL_TRUE on success, SDL_FALSE otherwise.
  *
  * @see SDL_PhysFS_Quit()
  */
-int SDL_PhysFS_Init() {
+SDL_bool SDL_PhysFS_Init() {
     if (PHYSFS_init(0) == 0) {
-        return SDL_PhysFS_SetLastError("SDL_PhysFS_Init");
+        SDL_PhysFS_SetLastError("SDL_PhysFS_Init");
+        return SDL_FALSE;
     }
 
-    return PHYSFS_ERR_OK;
+    return SDL_TRUE;
 }
 
 /**
  * Close the PhysFS virtual file system.
  *
- * @return 0 on success, non-zero otherwise.
+ * @return SDL_TRUE on success, SDL_FALSE otherwise.
  */
-int SDL_PhysFS_Quit() {
+SDL_bool SDL_PhysFS_Quit() {
     if (PHYSFS_deinit() == 0) {
-        return SDL_PhysFS_SetLastError("SDL_PhysFS_Quit");
+        SDL_PhysFS_SetLastError("SDL_PhysFS_Quit");
+        return SDL_FALSE;
     }
 
-    return PHYSFS_ERR_OK;
+    return SDL_TRUE;
 }
 
 /**
@@ -73,16 +75,17 @@ int SDL_PhysFS_Quit() {
  * @param newDir Directory or archive to add to the path, in platform-dependent notation.
  * @param mountPoint Location in the interpolated tree that this archive will be "mounted", in platform-independent notation. NULL or "" is equivalent to "/".
  *
- * @return 0 on success, non-zero on failure.
+ * @return SDL_TRUE on success, SDL_FALSE otherwise.
  *
  * @see SDL_PhysFS_Unmount()
  */
-int SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
+SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
     if (PHYSFS_mount(newDir, mountPoint, 1) == 0) {
-        return SDL_PhysFS_SetLastError("SDL_PhysFS_Mount");
+        SDL_PhysFS_SetLastError("SDL_PhysFS_Mount");
+        return SDL_FALSE;
     }
 
-    return PHYSFS_ERR_OK;
+    return SDL_TRUE;
 }
 
 /**
@@ -93,20 +96,22 @@ int SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  * @param newDir A filename that can represent the file data. Has to be unique. For example: data.zip
  * @param mountPoint The location in the tree that the archive will be mounted.
  *
- * @return 0 on success, non-zero on failure.
+ * @return SDL_TRUE on success, SDL_FALSE otherwise.
  *
  * @see SDL_PhysFS_Mount()
  */
-int SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint) {
+SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint) {
     if (dataSize <= 0) {
-        return SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
+        SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
+        return SDL_FALSE;
     }
 
     if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, 0, newDir, mountPoint, 1) == 0) {
-        return SDL_PhysFS_SetLastError("SDL_PhysFS_MountFromMemory");
+        SDL_PhysFS_SetLastError("SDL_PhysFS_MountFromMemory");
+        return SDL_FALSE;
     }
 
-    return PHYSFS_ERR_OK;
+    return SDL_TRUE;
 }
 
 /**
@@ -114,16 +119,17 @@ int SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, cons
  *
  * @param oldDir The directory that was supplied to MountPhysFS's newDir.
  *
- * @return 0 on success, non-zero on failure.
+ * @return SDL_TRUE on success, SDL_FALSE otherwise.
  *
  * @see MountPhysFS()
  */
-int SDL_PhysFS_Unmount(const char* oldDir) {
+SDL_bool SDL_PhysFS_Unmount(const char* oldDir) {
     if (PHYSFS_unmount(oldDir) == 0) {
-        return SDL_PhysFS_SetLastError("SDL_PhysFS_Unmount");
+        SDL_PhysFS_SetLastError("SDL_PhysFS_Unmount");
+        return SDL_FALSE;
     }
 
-    return PHYSFS_ERR_OK;
+    return SDL_TRUE;
 }
 
 Sint64 SDLCALL SDL_PhysFS_RWopsSize(struct SDL_RWops *rw) {
@@ -220,7 +226,6 @@ SDL_RWops *SDL_PhysFS_RWopsCreate(PHYSFS_File *handle) {
 
     if (handle == NULL) {
         SDL_PhysFS_SetLastError("SDL_PhysFS_RWopsCreate");
-        //SDL_SetError("PHYSFS: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
     }
     else {
         retval = SDL_AllocRW();
