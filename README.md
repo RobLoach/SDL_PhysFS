@@ -46,4 +46,4 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 
 ## License
 
-[LICENSE](LICENSE)
+[zlib](LICENSE)
