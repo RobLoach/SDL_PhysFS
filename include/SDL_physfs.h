@@ -17,6 +17,21 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
 void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 
+#ifndef SDL_PhysFS_STBIMG_Load
+/**
+ * Integration with SDL_stbimage.h for image loading support with stb_image.h.
+ *
+ * Be sure to include both SDL_physfs.h and SDL_stbimage.h for this to function properly.
+ *
+ * @param filename A const char* representing the file to load from PhysFS.
+ *
+ * @return The SDL_Surface*, or NULL on failure. Use SDL_GetError() to get more information.
+ *
+ * @see https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h
+ */
+#define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_RW(SDL_PhysFS_RWFromFile(filename), 1))
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -33,6 +48,13 @@ extern "C" {
 
 #include "physfs.h"
 
+/**
+ * Reports the latest PhysFS error to SDL.
+ *
+ * @param functionName The name of the function that was being used.
+ *
+ * @return The error code of the PhysFS error.
+ */
 int SDL_PhysFS_SetLastError(const char* functionName) {
     int error = PHYSFS_getLastErrorCode();
     SDL_SetError("%s: %s", functionName, PHYSFS_getErrorByCode(error));
@@ -132,11 +154,21 @@ SDL_bool SDL_PhysFS_Unmount(const char* oldDir) {
     return SDL_TRUE;
 }
 
+/**
+ * SDL_RWops callback: size.
+ *
+ * @internal
+ */
 Sint64 SDLCALL SDL_PhysFS_RWopsSize(struct SDL_RWops *rw) {
     PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
     return (Sint64) PHYSFS_fileLength(handle);
 }
 
+/**
+ * SDL_RWops callback: seek.
+ *
+ * @internal
+ */
 Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whence) {
     PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
     PHYSFS_sint64 pos = 0;
@@ -172,7 +204,7 @@ Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whe
     if (pos < 0) {
         return SDL_SetError("Attempt to seek past start of file.");
     }
-    
+
     if (!PHYSFS_seek(handle, (PHYSFS_uint64)pos)) {
         return SDL_SetError("PhysicsFS error: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
     }
@@ -180,6 +212,11 @@ Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whe
     return (Sint64) pos;
 }
 
+/**
+ * SDL_RWops callback: read.
+ *
+ * @internal
+ */
 size_t SDL_PhysFS_RWopsRead(struct SDL_RWops *rw, void *ptr, size_t size, size_t maxnum) {
     PHYSFS_File *handle = (PHYSFS_File *) rw->hidden.unknown.data1;
     const PHYSFS_uint64 readlen = (PHYSFS_uint64) (maxnum * size);
@@ -188,11 +225,16 @@ size_t SDL_PhysFS_RWopsRead(struct SDL_RWops *rw, void *ptr, size_t size, size_t
         if (!PHYSFS_eof(handle)){
             return (size_t)SDL_SetError("PhysicsFS error: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
         }
-    } 
+    }
 
     return (size_t) rc / size;
 }
 
+/**
+ * SDL_RWops callback: write.
+ *
+ * @internal
+ */
 size_t SDLCALL SDL_PhysFS_RWopsWrite(struct SDL_RWops *rw, const void *ptr, size_t size, size_t num) {
     PHYSFS_File *handle = (PHYSFS_File *) rw->hidden.unknown.data1;
     const PHYSFS_uint64 writelen = (PHYSFS_uint64) (num * size);
@@ -204,6 +246,11 @@ size_t SDLCALL SDL_PhysFS_RWopsWrite(struct SDL_RWops *rw, const void *ptr, size
     return (size_t) rc;
 }
 
+/**
+ * SDL_RWops callback: close.
+ *
+ * @internal
+ */
 static int SDL_PhysFS_RWopsClose(SDL_RWops *rw) {
     if (rw == NULL) {
         return 0;
@@ -212,6 +259,7 @@ static int SDL_PhysFS_RWopsClose(SDL_RWops *rw) {
     PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
     if (handle != NULL) {
         if (!PHYSFS_close(handle)) {
+            SDL_FreeRW(rw);
             return SDL_SetError("PhysicsFS error: %s", PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode()));
         }
 
@@ -221,6 +269,11 @@ static int SDL_PhysFS_RWopsClose(SDL_RWops *rw) {
     return 0;
 }
 
+/**
+ * Creates a SDL_RWops based on the given PHYSFS_File.
+ *
+ * @internal
+ */
 SDL_RWops *SDL_PhysFS_RWopsCreate(PHYSFS_File *handle) {
     SDL_RWops *retval = NULL;
 
@@ -242,31 +295,63 @@ SDL_RWops *SDL_PhysFS_RWopsCreate(PHYSFS_File *handle) {
     return retval;
 }
 
+/**
+ * Loads a SDL_RWops from the given filename in PhysFS.
+ *
+ * @param filename The filename to load from PhysFS.
+ *
+ * @return The resulting SDL_RWops*, which must be freed with SDL_RWclose() afterwards. NULL on failure, use SDL_GetError() to see details.
+ */
 SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename) {
     PHYSFS_File* handle = PHYSFS_openRead(filename);
     if (handle == NULL) {
         SDL_PhysFS_SetLastError("SDL_PhysFS_LoadRWops");
         return NULL;
     }
+
     return SDL_PhysFS_RWopsCreate(handle);
 }
 
+/**
+ * Loads a bitmap file from PhysFS into an SDL_Surface.
+ *
+ * @param filename The filename to load.
+ *
+ * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
+ */
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
     SDL_RWops* rwops = SDL_PhysFS_RWFromFile(filename);
     if (rwops == NULL) {
         return NULL;
     }
+
     return SDL_LoadBMP_RW(rwops, 1);
 }
 
+/**
+ * Loads a wav file from PhysFS.
+ *
+ * @param filename The filename of the wav file to load.
+ *
+ * @return The resulting SDL_AudioSpec*, or NULL on failure. Use SDL_GetError() for details of the failure.
+ */
 SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len) {
     SDL_RWops* rwops = SDL_PhysFS_RWFromFile(filename);
     if (rwops == NULL) {
         return NULL;
     }
+
     return SDL_LoadWAV_RW(rwops, 1, spec, audio_buf, audio_len);
 }
 
+/**
+ * Loads all the file data from a given filename.
+ *
+ * @param filename The name of the file to load.
+ * @param datasize Where to put the resulting size of the file.
+ *
+ * @return A new memory buffer containing all the data from the file. NULL on failure, use SDL_GetError() for details.
+ */
 void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     void* handle = PHYSFS_openRead(filename);
     if (handle == 0) {
@@ -297,6 +382,7 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     // Close the file handle, and return the bytes read and the buffer.
     PHYSFS_close(handle);
     *datasize = (size_t)read;
+
     return buffer;
 }
 
