@@ -52,6 +52,9 @@ SDL_PHYSFS_DEF SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_Audio
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 SDL_PHYSFS_DEF size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
+SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
+SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
+SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
 
 #ifndef SDL_PhysFS_IMG_Load
 /**
@@ -537,6 +540,46 @@ SDL_bool SDL_PhysFS_SetWriteDir(const char* path) {
     }
 
     return SDL_TRUE;
+}
+
+/**
+ * Loads a list of files from the given directory.
+ *
+ * Make sure to unload the list by using SDL_PhysFS_FreeDirectoryFiles().
+ *
+ * @code
+ * char** directoryFiles = SDL_PhysFS_LoadDirectoryFiles("res");
+ * int count = 0;
+ * for (char** file = directoryFiles; *file != NULL; file++) {
+ *     count++;
+ * }
+ * SDL_PhysFS_FreeDirectoryFiles(directoryFiles);
+ * @endcode
+ *
+ * @return A list of files that were found in the given search path. NULL otherwise.
+ *
+ * @see SDL_PhysFS_FreeDirectoryFiles()
+ */
+inline char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
+    return PHYSFS_enumerateFiles(directory);
+}
+
+/**
+ * Unloads a list of directory files.
+ *
+ * @see SDL_PhysFS_LoadDirectoryFiles()
+ */
+inline void SDL_PhysFS_FreeDirectoryFiles(char** files) {
+    PHYSFS_freeList(files);
+}
+
+/**
+ * Determine if a file exists in the search path.
+ *
+ * @return SDL_TRUE if it exists, SDL_FALSE otherwise.
+ */
+inline SDL_bool SDL_PhysFS_Exists(const char* file) {
+    return PHYSFS_exists(file) != 0;
 }
 
 #ifdef __cplusplus

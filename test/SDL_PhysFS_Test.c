@@ -56,6 +56,22 @@ int main() {
         SDL_free((void*)data);
     }
 
+    // SDL_PhysFS_Exists
+    SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == SDL_TRUE);
+    SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == SDL_FALSE);
+
+    // SDL_PhysFS_LoadDirectoryFiles
+    {
+        char** files = SDL_PhysFS_LoadDirectoryFiles("res");
+        SDL_assert(files != NULL);
+        int count = 0;
+        for (char** file = files; *file != NULL; file++) {
+            count++;
+        }
+        SDL_assert(count == 3);
+        SDL_PhysFS_FreeDirectoryFiles(files);
+    }
+
     // Make sure there are no errors.
     SDL_assert(strlen(SDL_GetError()) == 0);
 
