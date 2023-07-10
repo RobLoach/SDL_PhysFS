@@ -1,11 +1,11 @@
 # SDL_physfs_test
-add_executable(SDL_physfs_test SDL_physfs_test.c)
-target_compile_options(SDL_physfs_test PRIVATE -Wall -Wextra -Wconversion -Wsign-conversion)
-target_link_libraries(SDL_physfs_test PRIVATE
+add_executable(SDL_PhysFS_Test SDL_PhysFS_Test.c)
+target_compile_options(SDL_PhysFS_Test PRIVATE -Wall -Wextra -Wconversion -Wsign-conversion)
+target_link_libraries(SDL_PhysFS_Test PRIVATE
     SDL2::SDL2
     SDL2::SDL2main
     physfs-static
-    SDL_physfs
+    SDL_PhysFS
 )
 
 # Resources
@@ -16,4 +16,4 @@ file(COPY ${test_resources} DESTINATION "resources/")
 
 # Set up the test
 list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
-add_test(NAME SDL_physfs_test COMMAND SDL_physfs_test)
+add_test(NAME SDL_PhysFS_Test COMMAND SDL_PhysFS_Test)

@@ -1,10 +1,10 @@
 #include <SDL2/SDL.h>
 
 #define SDL_PHYSFS_IMPLEMENTATION
-#include "SDL_physfs.h"
+#include "SDL_PhysFS.h"
 
 int main() {
-	SDL_Init(SDL_INIT_EVERYTHING);
+	SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     const int screenWidth = 800;
     const int screenHeight = 450;
@@ -73,10 +73,11 @@ int main() {
     SDL_FreeWAV(wavBuffer);
     SDL_CloseAudioDevice(deviceId);
 
-    SDL_PhysFS_Quit();
 	SDL_DestroyTexture(tex);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+
+    SDL_PhysFS_Quit();
 	SDL_Quit();
 
     return 0;
