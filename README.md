@@ -11,7 +11,7 @@
 #include "SDL_PhysFS.h"
 
 int main() {
-	SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Init(SDL_INIT_EVERYTHING);
 
     // Initialize PhysFS
     SDL_PhysFS_Init();
@@ -24,7 +24,7 @@ int main() {
 
     // Clean up
     SDL_PhysFS_Quit();
-	SDL_Quit();
+    SDL_Quit();
 
     return 0;
 }
@@ -46,7 +46,7 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
 SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
 
-// Optional integrations
+// Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
 Mix_Music* SDL_PhysFS_Mix_LoadMUS(const char* filename);   // SDL_mixer
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
