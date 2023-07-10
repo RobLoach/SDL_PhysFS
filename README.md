@@ -50,6 +50,7 @@ SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
 Mix_Music* SDL_PhysFS_Mix_LoadMUS(const char* filename);   // SDL_mixer
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
+TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 ```
 
 ## License

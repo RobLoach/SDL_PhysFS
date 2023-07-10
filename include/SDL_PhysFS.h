@@ -92,6 +92,20 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
 #define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_RW(SDL_PhysFS_RWFromFile(filename), 1)))
 #endif  // SDL_PhysFS_Mix_LoadMUS
 
+#ifndef SDL_PhysFS_TTF_OpenFont
+/**
+ * Load a font with SDL_ttf from PhysFS, at the given size.
+ *
+ * @param filename A const char* representing the file to load from PhysFS.
+ * @param ptsize Integer point size to use for the newly-opened font
+ *
+ * @return The TTF_Font*, or NULL on failure.
+ *
+ * @see https://wiki.libsdl.org/SDL2_ttf/TTF_OpenFontRW
+ */
+#define SDL_PhysFS_TTF_OpenFont(filename, ptsize) (TTF_OpenFontRW(SDL_PhysFS_RWFromFile(filename), 1, ptsize))
+#endif  // SDL_PhysFS_TTF_OpenFont
+
 #ifdef __cplusplus
 }
 #endif
