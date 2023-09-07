@@ -64,7 +64,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @return The SDL_Surface*, or NULL on failure. Use SDL_GetError() to get more information.
  */
-#define SDL_PhysFS_IMG_Load(filename) (IMG_Load_RW(SDL_PhysFS_RWFromFile(filename), SDL_TRUE)))
+#define SDL_PhysFS_IMG_Load(filename) (IMG_Load_RW(SDL_PhysFS_RWFromFile(filename), SDL_TRUE))
 #endif  // SDL_PhysFS_IMG_Load
 
 #ifndef SDL_PhysFS_STBIMG_Load
@@ -92,7 +92,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @see https://github.com/libsdl-org/SDL_mixer
  */
-#define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_RW(SDL_PhysFS_RWFromFile(filename), 1)))
+#define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_RW(SDL_PhysFS_RWFromFile(filename), 1))
 #endif  // SDL_PhysFS_Mix_LoadMUS
 
 #ifndef SDL_PhysFS_TTF_OpenFont
