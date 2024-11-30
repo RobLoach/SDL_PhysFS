@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <string.h>
 
 #define SDL_PHYSFS_IMPLEMENTATION
@@ -6,13 +6,13 @@
 
 int main() {
     // SDL_Init
-	SDL_assert(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0);
+	SDL_assert(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
 
     // SDL_PhysFS_Init
-    SDL_assert(SDL_PhysFS_InitEx("SDL_PhysFS", "Test") == SDL_TRUE);
+    SDL_assert(SDL_PhysFS_InitEx(NULL, "SDL_PhysFS", "Test"));
 
     // SDL_PhysFS_Mount
-    SDL_assert(SDL_PhysFS_Mount("resources", "res") == SDL_TRUE);
+    SDL_assert(SDL_PhysFS_Mount("resources", "res"));
 
     // SDL_PhysFS_LoadBMP
     {
@@ -20,7 +20,7 @@ int main() {
         SDL_assert(bmp != NULL);
         SDL_assert(bmp->w == 250);
         SDL_assert(bmp->h == 239);
-        SDL_FreeSurface(bmp);
+        SDL_DestroySurface(bmp);
     }
 
     // SDL_PhysFS_LoadFile
@@ -28,7 +28,7 @@ int main() {
         size_t size;
         const char* text = (const char*)SDL_PhysFS_LoadFile("res/test.txt", &size);
         SDL_assert(text != NULL);
-        SDL_assert(strcmp(text, "Hello, World!") == 0);
+        SDL_assert(memcmp(text, "Hello, World", 12) == 0);
         SDL_free((void*)text);
     }
 
@@ -41,7 +41,7 @@ int main() {
         SDL_assert(wavBuffer != NULL);
         SDL_assert(wavLength > 200);
         SDL_assert(wavSpec.channels >= 2);
-        SDL_FreeWAV(wavBuffer);
+        SDL_free(wavBuffer);
     }
 
     // Write
@@ -57,8 +57,8 @@ int main() {
     }
 
     // SDL_PhysFS_Exists
-    SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == SDL_TRUE);
-    SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == SDL_FALSE);
+    SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
+    SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);
 
     // SDL_PhysFS_LoadDirectoryFiles
     {
@@ -76,10 +76,10 @@ int main() {
     SDL_assert(strlen(SDL_GetError()) == 0);
 
     // SDL_PhysFS_Unmount
-    SDL_assert(SDL_PhysFS_Unmount("resources") == SDL_TRUE);
+    SDL_assert(SDL_PhysFS_Unmount("resources") == true);
 
     // SDL_PhysFS_Quit
-    SDL_assert(SDL_PhysFS_Quit() == SDL_TRUE);
+    SDL_assert(SDL_PhysFS_Quit() == true);
 
 	SDL_Quit();
 

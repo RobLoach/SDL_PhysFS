@@ -2,8 +2,7 @@
 add_executable(SDL_PhysFS_Test SDL_PhysFS_Test.c)
 target_compile_options(SDL_PhysFS_Test PRIVATE -Wall -Wextra -Wconversion -Wsign-conversion)
 target_link_libraries(SDL_PhysFS_Test PRIVATE
-    SDL2::SDL2
-    SDL2::SDL2main
+    SDL3::SDL3-static
     physfs-static
     SDL_PhysFS
 )

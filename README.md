@@ -2,10 +2,16 @@
 
 [PhysicsFS](https://github.com/icculus/physfs) is a portable flexible file I/O abstraction library. `SDL_PhysFS` builds upon [PhysFS's physfsrwops.h](https://github.com/icculus/physfs/blob/main/extras/physfsrwops.h) to ease the integration between SDL and PhysFS to load assets from *.zip* files.
 
+## Dependencies
+
+- [SDL](https://github.com/libsdl-org/SDL) 3.x
+  - For SDL 2, see the [2.x branch](https://github.com/RobLoach/SDL_PhysFS/tree/2.x)
+- [PhysFS](https://github.com/icculus/physfs)
+
 ## Example
 
 ``` c
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
 #define SDL_PHYSFS_IMPLEMENTATION
 #include "SDL_PhysFS.h"
@@ -14,7 +20,7 @@ int main() {
     SDL_Init(SDL_INIT_EVERYTHING);
 
     // Initialize PhysFS
-    SDL_PhysFS_Init();
+    SDL_PhysFS_Init(0);
 
     // Mount
     SDL_PhysFS_Mount("assets.zip", "assets");

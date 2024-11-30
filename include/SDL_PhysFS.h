@@ -1,11 +1,11 @@
 /**
- * SDL_PhysFS.h v1.0.0 - PhysFS virtual file system support for SDL.
+ * SDL_PhysFS.h v3.0.0 - PhysFS virtual file system support for SDL.
  *
  * https://github.com/RobLoach/SDL_PhysFS
  *
  * @license zlib
  *
- * Copyright (c) 2022 Rob Loach <https://robloach.net>
+ * Copyright (c) 2024 Rob Loach <https://robloach.net>
  *
  * This software is provided 'as-is', without any express or implied
  * warranty.  In no event will the authors be held liable for any damages
@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
 #ifndef SDL_PHYSFS_DEF
 #ifdef SDL_PHYSFS_STATIC
@@ -40,21 +40,22 @@ extern "C" {
 #endif
 #endif
 
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Init();
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_InitEx(const char* org, const char* app);
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Quit();
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Unmount(const char* oldDir);
-SDL_PHYSFS_DEF SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename);
+SDL_PHYSFS_DEF bool SDL_PhysFS_Init(const char* argv);
+SDL_PHYSFS_DEF bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
+SDL_PHYSFS_DEF bool SDL_PhysFS_Quit();
+SDL_PHYSFS_DEF bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
+SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
+SDL_PHYSFS_DEF bool SDL_PhysFS_Unmount(const char* oldDir);
+SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
-SDL_PHYSFS_DEF SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
+SDL_PHYSFS_DEF bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 SDL_PHYSFS_DEF size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
+SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
 SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
-SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
+SDL_PHYSFS_DEF bool SDL_PhysFS_Exists(const char* file);
+SDL_PHYSFS_DEF SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 
 #ifndef SDL_PhysFS_IMG_Load
 /**
@@ -64,7 +65,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @return The SDL_Surface*, or NULL on failure. Use SDL_GetError() to get more information.
  */
-#define SDL_PhysFS_IMG_Load(filename) (IMG_Load_RW(SDL_PhysFS_RWFromFile(filename), SDL_TRUE))
+#define SDL_PhysFS_IMG_Load(filename) (IMG_Load_RW(SDL_PhysFS_IOFromFile(filename), true))
 #endif  // SDL_PhysFS_IMG_Load
 
 #ifndef SDL_PhysFS_STBIMG_Load
@@ -79,7 +80,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @see https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h
  */
-#define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_RW(SDL_PhysFS_RWFromFile(filename), 1))
+#define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_RW(SDL_PhysFS_IOFromFile(filename), 1))
 #endif  // SDL_PhysFS_STBIMG_Load
 
 #ifndef SDL_PhysFS_Mix_LoadMUS
@@ -92,7 +93,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @see https://github.com/libsdl-org/SDL_mixer
  */
-#define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_RW(SDL_PhysFS_RWFromFile(filename), 1))
+#define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_RW(SDL_PhysFS_IOFromFile(filename), 1))
 #endif  // SDL_PhysFS_Mix_LoadMUS
 
 #ifndef SDL_PhysFS_TTF_OpenFont
@@ -106,7 +107,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
  *
  * @see https://wiki.libsdl.org/SDL2_ttf/TTF_OpenFontRW
  */
-#define SDL_PhysFS_TTF_OpenFont(filename, ptsize) (TTF_OpenFontRW(SDL_PhysFS_RWFromFile(filename), 1, ptsize))
+#define SDL_PhysFS_TTF_OpenFont(filename, ptsize) (TTF_OpenFontRW(SDL_PhysFS_IOFromFile(filename), 1, ptsize))
 #endif  // SDL_PhysFS_TTF_OpenFont
 
 #ifdef __cplusplus
@@ -123,7 +124,7 @@ SDL_PHYSFS_DEF SDL_bool SDL_PhysFS_Exists(const char* file);
 extern "C" {
 #endif
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
 // physfs.h
 #ifndef SDL_PHYSFS_PHYSFS_H
@@ -140,20 +141,41 @@ extern "C" {
 #define SDL_PhysFS_SetError(description) do { SDL_SetError("SDL_PhysFS.h:%d: %s (%s)", __LINE__, description, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())); } while(0)
 #endif
 
+void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
+    SDL_malloc_func malloc_func;
+    SDL_GetMemoryFunctions(&malloc_func, NULL, NULL, NULL);
+    return malloc_func((size_t)size);
+}
+
+void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
+    SDL_realloc_func realloc_func;
+    SDL_GetMemoryFunctions(NULL, NULL, &realloc_func, NULL);
+    return realloc_func(mem, (size_t)size);
+}
+
 /**
  * Initialize the PhysFS virtual file system.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Quit()
  */
-SDL_bool SDL_PhysFS_Init() {
-    if (PHYSFS_init(0) == 0) {
+bool SDL_PhysFS_Init(const char* argv) {
+    // Set up the memory functions.
+    PHYSFS_Allocator allocator;
+    allocator.Init = NULL;
+    allocator.Deinit = NULL;
+    allocator.Malloc = &SDL_PhysFS_AllocatorMalloc;
+    allocator.Realloc = &SDL_PhysFS_AllocatorRealloc;
+    allocator.Free = &SDL_free;
+    PHYSFS_setAllocator(&allocator);
+
+    if (PHYSFS_init(argv) == 0) {
         SDL_PhysFS_SetError("Failed to initialize PhysFS");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
@@ -164,14 +186,14 @@ SDL_bool SDL_PhysFS_Init() {
  * @param org The name of your organization.
  * @param app The name of your application.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Init()
  */
-SDL_bool SDL_PhysFS_InitEx(const char* org, const char* app) {
+bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app) {
     // Initialize
-    if (SDL_PhysFS_Init() == SDL_FALSE) {
-        return SDL_FALSE;
+    if (SDL_PhysFS_Init(argv) == false) {
+        return false;
     }
 
     // Find the preferences path.
@@ -179,28 +201,68 @@ SDL_bool SDL_PhysFS_InitEx(const char* org, const char* app) {
     if (path == NULL) {
         SDL_PhysFS_Quit();
         SDL_PhysFS_SetError("Failed to find SDL's pref directory");
-        return SDL_FALSE;
+        return false;
     }
 
     // Set up the write directory as /app
     SDL_PhysFS_SetWriteDir(path);
     SDL_PhysFS_Mount(path, "app");
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
  * Close the PhysFS virtual file system.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  */
-SDL_bool SDL_PhysFS_Quit() {
+bool SDL_PhysFS_Quit() {
     if (PHYSFS_deinit() == 0) {
         SDL_PhysFS_SetError("Failed to deinitialize PhysFS");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    // Remove the SDL allocator.
+    PHYSFS_setAllocator(NULL);
+
+    return true;
+}
+
+SDL_IOStatus SDL_PhysFS_IOStatus(int error) {
+    switch ((PHYSFS_ErrorCode)error) {
+        case PHYSFS_ERR_OK: return SDL_IO_STATUS_READY;
+        case PHYSFS_ERR_OTHER_ERROR: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_OUT_OF_MEMORY: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_NOT_INITIALIZED: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_IS_INITIALIZED: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_ARGV0_IS_NULL: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_UNSUPPORTED: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_PAST_EOF: return SDL_IO_STATUS_EOF;
+        case PHYSFS_ERR_FILES_STILL_OPEN: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_INVALID_ARGUMENT: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_NOT_MOUNTED: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_NOT_FOUND: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_SYMLINK_FORBIDDEN: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_NO_WRITE_DIR: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_OPEN_FOR_READING: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_OPEN_FOR_WRITING: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_NOT_A_FILE: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_READ_ONLY: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_CORRUPT: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_SYMLINK_LOOP: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_IO: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_PERMISSION: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_NO_SPACE: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_BAD_FILENAME: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_BUSY: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_DIR_NOT_EMPTY: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_OS_ERROR: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_DUPLICATE: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_BAD_PASSWORD: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_APP_CALLBACK: return SDL_IO_STATUS_ERROR;
+    }
+
+    return SDL_IO_STATUS_READY;
 }
 
 /**
@@ -209,17 +271,17 @@ SDL_bool SDL_PhysFS_Quit() {
  * @param newDir Directory or archive to add to the path, in platform-dependent notation.
  * @param mountPoint Location in the interpolated tree that this archive will be "mounted", in platform-independent notation. NULL or "" is equivalent to "/".
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Unmount()
  */
-SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
+bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
     if (PHYSFS_mount(newDir, mountPoint, 1) == 0) {
         SDL_PhysFS_SetError("Failed to mount");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
@@ -230,22 +292,22 @@ SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  * @param newDir A filename that can represent the file data. Has to be unique. For example: data.zip
  * @param mountPoint The location in the tree that the archive will be mounted.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Mount()
  */
-SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint) {
+bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint) {
     if (dataSize <= 0) {
         SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
-        return SDL_FALSE;
+        return false;
     }
 
     if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, 0, newDir, mountPoint, 1) == 0) {
         SDL_PhysFS_SetError("Failed to mount internal memory");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
@@ -253,46 +315,46 @@ SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize,
  *
  * @param oldDir The directory that was supplied to MountPhysFS's newDir.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Mount()
  */
-SDL_bool SDL_PhysFS_Unmount(const char* oldDir) {
+bool SDL_PhysFS_Unmount(const char* oldDir) {
     if (PHYSFS_unmount(oldDir) == 0) {
         SDL_PhysFS_SetError("Failed to unmount old directory");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
- * SDL_RWops callback: size.
+ * SDL_IOStream callback: size.
  *
  * @internal
  */
-Sint64 SDLCALL SDL_PhysFS_RWopsSize(struct SDL_RWops *rw) {
-    if (rw == NULL) {
+Sint64 SDLCALL SDL_PhysFS_GetIOSize(void *userdata) {
+    PHYSFS_File *handle = (PHYSFS_File *)userdata;
+    if (handle == NULL) {
         return 0;
     }
 
-    PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
     return (Sint64) PHYSFS_fileLength(handle);
 }
 
 /**
- * SDL_RWops callback: seek.
+ * SDL_IOStream callback: seek.
  *
  * @internal
  */
-Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whence) {
-    PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
+Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhence whence) {
+    PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 pos = 0;
 
-    if (whence == RW_SEEK_SET) {
+    if (whence == SDL_IO_SEEK_SET) {
         pos = (PHYSFS_sint64) offset;
     }
-    else if (whence == RW_SEEK_CUR) {
+    else if (whence == SDL_IO_SEEK_CUR) {
         const PHYSFS_sint64 current = PHYSFS_tell(handle);
         if (current == -1) {
             SDL_PhysFS_SetError("Cannot find position in file");
@@ -305,7 +367,7 @@ Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whe
 
         pos = current + ((PHYSFS_sint64) offset);
     }
-    else if (whence == RW_SEEK_END) {
+    else if (whence == SDL_IO_SEEK_END) {
         const PHYSFS_sint64 len = PHYSFS_fileLength(handle);
         if (len == -1) {
             SDL_PhysFS_SetError("Cannot find end of file");
@@ -333,106 +395,126 @@ Sint64 SDLCALL SDL_PhysFS_RWopsSeek(struct SDL_RWops *rw, Sint64 offset, int whe
 }
 
 /**
- * SDL_RWops callback: read.
+ * SDL_IOStream callback: read.
  *
  * @internal
  */
-size_t SDL_PhysFS_RWopsRead(struct SDL_RWops *rw, void *ptr, size_t size, size_t maxnum) {
-    PHYSFS_File *handle = (PHYSFS_File *) rw->hidden.unknown.data1;
-    const PHYSFS_uint64 readlen = (PHYSFS_uint64) (maxnum * size);
-    const PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, readlen);
-    if (rc != ((PHYSFS_sint64) readlen)) {
-        if (!PHYSFS_eof(handle)){
-            SDL_PhysFS_SetError("At end of the file");
-            return 0;
-        }
+size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOStatus *status) {
+    PHYSFS_File *handle = (PHYSFS_File *)userdata;
+    PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
+    if (rc <= 0) {
+        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        rc = 0;
     }
 
-    return (size_t) rc / size;
+    return (size_t)rc;
 }
 
 /**
- * SDL_RWops callback: write.
+ * SDL_IOStream callback: write.
  *
  * @internal
  */
-size_t SDLCALL SDL_PhysFS_RWopsWrite(struct SDL_RWops *rw, const void *ptr, size_t size, size_t num) {
-    if (rw == NULL) {
+size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status) {
+    PHYSFS_File *handle = (PHYSFS_File *)userdata;
+    PHYSFS_sint64 wc;
+
+    if (handle == NULL) {
         return 0;
     }
 
-    PHYSFS_File *handle = (PHYSFS_File *) rw->hidden.unknown.data1;
-    const PHYSFS_uint64 writelen = (PHYSFS_uint64) (num * size);
-    const PHYSFS_sint64 rc = PHYSFS_writeBytes(handle, ptr, writelen);
-    if (rc != ((PHYSFS_sint64) writelen)) {
+    wc = PHYSFS_writeBytes(handle, ptr, (PHYSFS_uint64)size);
+    if (wc < 0) {
         SDL_PhysFS_SetError("Failed to write file");
+        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        wc = 0;
     }
 
-    return (size_t) rc;
+    return (size_t)wc;
 }
 
 /**
- * SDL_RWops callback: close.
+ * SDL_IOStream callback: flush.
  *
  * @internal
  */
-static int SDL_PhysFS_RWopsClose(SDL_RWops *rw) {
-    if (rw == NULL) {
-        return 0;
+bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
+    PHYSFS_File* handle = (PHYSFS_File *)userdata;
+    if (handle == NULL) {
+        return false;
     }
 
-    PHYSFS_File *handle = (PHYSFS_File *)rw->hidden.unknown.data1;
+    if (PHYSFS_flush(handle) != 0) {
+        return true;
+    }
+
+    if (status != NULL) {
+        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+    }
+
+    return false;
+}
+
+/**
+ * SDL_IOStream callback: close.
+ *
+ * @internal
+ */
+bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
+    PHYSFS_File *handle = (PHYSFS_File *)userdata;
+
     if (handle != NULL) {
         if (!PHYSFS_close(handle)) {
-            SDL_FreeRW(rw);
             SDL_PhysFS_SetError("Failed to close file");
-            return -1;
+            return false;
         }
 
-        SDL_FreeRW(rw);
+        // TODO: Do we need to SDL_free() the handle?
+        //SDL_free(handle);
+        return true;
     }
 
-    return 0;
+    return false;
 }
 
 /**
- * Creates a SDL_RWops based on the given PHYSFS_File.
+ * Creates a SDL_IOStream based on the given PHYSFS_File.
  *
  * @internal
  */
-SDL_RWops *SDL_PhysFS_RWopsCreate(PHYSFS_File *handle) {
-    SDL_RWops *retval = NULL;
+SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
+    SDL_IOStream *retval = NULL;
 
     if (handle != NULL) {
-        retval = SDL_AllocRW();
-        if (retval != NULL) {
-            retval->size  = SDL_PhysFS_RWopsSize;
-            retval->seek  = SDL_PhysFS_RWopsSeek;
-            retval->read  = SDL_PhysFS_RWopsRead;
-            retval->write = SDL_PhysFS_RWopsWrite;
-            retval->close = SDL_PhysFS_RWopsClose;
-            retval->hidden.unknown.data1 = handle;
-        }
+        SDL_IOStreamInterface iface;
+        SDL_INIT_INTERFACE(&iface);
+        iface.size = SDL_PhysFS_GetIOSize;
+        iface.seek  = SDL_PhysFS_SeekIO;
+        iface.read  = SDL_PhysFS_ReadIO;
+        iface.write = SDL_PhysFS_WriteIO;
+        iface.flush = SDL_PhysFS_FlushIO;
+        iface.close = SDL_PhysFS_CloseIO;
+        retval = SDL_OpenIO(&iface, (void*)handle);
     }
 
     return retval;
 }
 
 /**
- * Loads a SDL_RWops from the given filename in PhysFS.
+ * Loads a SDL_IOStream from the given filename in PhysFS.
  *
  * @param filename The filename to load from PhysFS.
  *
- * @return The resulting SDL_RWops*, which must be freed with SDL_RWclose() afterwards. NULL on failure, use SDL_GetError() to see details.
+ * @return The resulting SDL_IOStream*, which must be freed with SDL_RWclose() afterwards. NULL on failure, use SDL_GetError() to see details.
  */
-SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename) {
+SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename) {
     PHYSFS_File* handle = PHYSFS_openRead(filename);
     if (handle == NULL) {
         SDL_PhysFS_SetError("Failed to open file for reading");
         return NULL;
     }
 
-    return SDL_PhysFS_RWopsCreate(handle);
+    return SDL_PhysFS_OpenIO(handle);
 }
 
 /**
@@ -443,12 +525,12 @@ SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename) {
  * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
  */
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
-    SDL_RWops* rwops = SDL_PhysFS_RWFromFile(filename);
-    if (rwops == NULL) {
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
+    if (io == NULL) {
         return NULL;
     }
 
-    return SDL_LoadBMP_RW(rwops, 1);
+    return SDL_LoadBMP_IO(io, 1);
 }
 
 /**
@@ -456,15 +538,15 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
  *
  * @param filename The filename of the wav file to load.
  *
- * @return The resulting SDL_AudioSpec*, or NULL on failure. Use SDL_GetError() for details of the failure.
+ * @return True or false depending on if loading was successful. Use SDL_GetError() for details of the failure.
  */
-SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len) {
-    SDL_RWops* rwops = SDL_PhysFS_RWFromFile(filename);
-    if (rwops == NULL) {
+bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len) {
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
+    if (io == NULL) {
         return NULL;
     }
 
-    return SDL_LoadWAV_RW(rwops, 1, spec, audio_buf, audio_len);
+    return SDL_LoadWAV_IO(io, 1, spec, audio_buf, audio_len);
 }
 
 /**
@@ -543,17 +625,17 @@ size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size) {
 /**
  * Sets the directory where PhysFS will write files.
  *
- * @return SDL_TRUE on success, SDL_FALSE otherwise.
+ * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Write()
  */
-SDL_bool SDL_PhysFS_SetWriteDir(const char* path) {
+bool SDL_PhysFS_SetWriteDir(const char* path) {
     if (PHYSFS_setWriteDir(path) == 0) {
         SDL_PhysFS_SetError("Failed to set write directory");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 /**
@@ -590,9 +672,9 @@ inline void SDL_PhysFS_FreeDirectoryFiles(char** files) {
 /**
  * Determine if a file exists in the search path.
  *
- * @return SDL_TRUE if it exists, SDL_FALSE otherwise.
+ * @return true if it exists, false otherwise.
  */
-inline SDL_bool SDL_PhysFS_Exists(const char* file) {
+inline bool SDL_PhysFS_Exists(const char* file) {
     return PHYSFS_exists(file) != 0;
 }
 

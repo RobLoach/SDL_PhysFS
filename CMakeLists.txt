@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.11)
-project(SDL_physfs
-    DESCRIPTION "SDL_physfs: Load SDL assets through physfs."
-    HOMEPAGE_URL "https://github.com/robloach/SDL_physfs"
-    VERSION 1.0.0
+project(SDL_PhysFS
+    DESCRIPTION "SDL_PhysFS: Load SDL assets through PhysFS."
+    HOMEPAGE_URL "https://github.com/RobLoach/SDL_PhysFS"
+    VERSION 3.0.0
     LANGUAGES C
 )
 
