@@ -58,7 +58,7 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_Exists(const char* file);
 SDL_PHYSFS_DEF SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 
 #ifdef _INCLUDE_PHYSFS_H_
-SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
+SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
 #endif
 
 #ifndef SDL_PhysFS_IMG_Load
