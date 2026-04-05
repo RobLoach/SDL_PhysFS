@@ -4,35 +4,83 @@
 #include "SDL_PhysFS.h"
 
 int main() {
-	SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+        SDL_Log("SDL_Init failed: %s", SDL_GetError());
+        return 1;
+    }
 
     const int screenWidth = 800;
     const int screenHeight = 450;
-	SDL_Window* window;// = SDL_CreateWindow("SDL_PhysFS: Example", 800, 450, SDL_WINDOW_SHOWN);
-	SDL_Renderer* renderer;// = SDL_CreateRenderer(window, NULL);
+    SDL_Window* window;
+    SDL_Renderer* renderer;
 
-    SDL_CreateWindowAndRenderer("SDL_PhysFS: Example", 800, 450, 0, &window, &renderer);
+    if (!SDL_CreateWindowAndRenderer("SDL_PhysFS: Example", 800, 450, 0, &window, &renderer)) {
+        SDL_Log("SDL_CreateWindowAndRenderer failed: %s", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
     // Initialize PhysFS.
-    SDL_PhysFS_Init(NULL);
+    if (!SDL_PhysFS_Init(NULL)) {
+        SDL_Log("SDL_PhysFS_Init failed: %s", SDL_GetError());
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
 
     // Mount
     SDL_PhysFS_Mount("resources", "res");
 
-    // Load the BMP from the SDL_RWops.
+    // Load the BMP from the SDL_IOStream.
     SDL_Surface* bmp = SDL_PhysFS_LoadBMP("res/test.bmp");
-	SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, bmp);
+    if (bmp == NULL) {
+        SDL_Log("SDL_PhysFS_LoadBMP failed: %s", SDL_GetError());
+        SDL_PhysFS_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, bmp);
+    if (tex == NULL) {
+        SDL_Log("SDL_CreateTextureFromSurface failed: %s", SDL_GetError());
+        SDL_DestroySurface(bmp);
+        SDL_PhysFS_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
     const int textureWidth = bmp->w;
     const int textureHeight = bmp->h;
-	SDL_DestroySurface(bmp);
+    SDL_DestroySurface(bmp);
 
     // Load WAV
     SDL_AudioSpec wavSpec;
     Uint32 wavLength;
     Uint8 *wavBuffer;
-    SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength);
+    if (!SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength)) {
+        SDL_Log("SDL_PhysFS_LoadWAV failed: %s", SDL_GetError());
+        SDL_DestroyTexture(tex);
+        SDL_PhysFS_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
     SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &wavSpec, NULL, NULL);
+    if (stream == NULL) {
+        SDL_Log("SDL_OpenAudioDeviceStream failed: %s", SDL_GetError());
+        SDL_free(wavBuffer);
+        SDL_DestroyTexture(tex);
+        SDL_PhysFS_Quit();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
 
     // Play the wav
     SDL_ResumeAudioStreamDevice(stream);
@@ -50,7 +98,7 @@ int main() {
                     switch (event.key.key) {
                         case SDLK_ESCAPE:
                             quit = 1;
-                        break;
+                            break;
                     }
                     break;
             }
@@ -68,20 +116,20 @@ int main() {
             textureHeight
         };
 
-		SDL_RenderClear(renderer);
-		SDL_RenderTexture(renderer, tex, NULL, &destination);
-		SDL_RenderPresent(renderer);
+        SDL_RenderClear(renderer);
+        SDL_RenderTexture(renderer, tex, NULL, &destination);
+        SDL_RenderPresent(renderer);
     }
 
     SDL_free(wavBuffer);
-    SDL_CloseAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK);
+    SDL_DestroyAudioStream(stream);
 
-	SDL_DestroyTexture(tex);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
 
     SDL_PhysFS_Quit();
-	SDL_Quit();
+    SDL_Quit();
 
     return 0;
 }

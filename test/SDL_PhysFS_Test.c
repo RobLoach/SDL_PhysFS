@@ -37,7 +37,7 @@ int main() {
         SDL_AudioSpec wavSpec;
         Uint32 wavLength;
         Uint8 *wavBuffer;
-        SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength);
+        SDL_assert(SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength));
         SDL_assert(wavBuffer != NULL);
         SDL_assert(wavLength > 200);
         SDL_assert(wavSpec.channels >= 2);
@@ -50,9 +50,9 @@ int main() {
     // Load from the preferences directory
     {
         size_t datasize;
-        const char* data = (const char*)SDL_PhysFS_LoadFile("/app/test.txt", &datasize);
+        const char* data = (const char*)SDL_PhysFS_LoadFile("app/test.txt", &datasize);
         SDL_assert(data != NULL);
-        SDL_assert(strcmp(data, "Hello World!") == 0);
+        SDL_assert(memcmp(data, "Hello World!", 12) == 0);
         SDL_free((void*)data);
     }
 
