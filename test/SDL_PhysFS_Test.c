@@ -10,8 +10,20 @@ int main(int argc, char* argv[]) {
     // SDL_Init
     SDL_assert(SDL_Init(0));
 
+    // SDL_PhysFS_Init / SDL_PhysFS_Quit cycle
+    SDL_assert(SDL_PhysFS_Init(argv[0]));
+    SDL_assert(SDL_PhysFS_Quit());
+
     // SDL_PhysFS_InitEx
     SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));
+
+    // SDL_PhysFS_SetWriteDir
+    {
+        char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
+        SDL_assert(prefPath != NULL);
+        SDL_assert(SDL_PhysFS_SetWriteDir(prefPath));
+        SDL_free(prefPath);
+    }
 
     // SDL_PhysFS_Mount
     SDL_assert(SDL_PhysFS_Mount("resources", "res"));
@@ -73,6 +85,24 @@ int main(int argc, char* argv[]) {
         SDL_free((void*)data);
     }
 
+    // SDL_PhysFS_MountFromMemory
+    {
+        size_t zipSize;
+        void* zipData = SDL_PhysFS_LoadFile("res/test.zip", &zipSize);
+        SDL_assert(zipData != NULL);
+        SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, (int)zipSize, "test.zip", "zip"));
+        SDL_assert(SDL_PhysFS_Exists("zip/test.txt"));
+        {
+            size_t size;
+            const char* text = (const char*)SDL_PhysFS_LoadFile("zip/test.txt", &size);
+            SDL_assert(text != NULL);
+            SDL_assert(memcmp(text, "Hello, World", 12) == 0);
+            SDL_free((void*)text);
+        }
+        SDL_assert(SDL_PhysFS_Unmount("test.zip"));
+        SDL_free(zipData);
+    }
+
     // SDL_PhysFS_Exists
     SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
     SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);
@@ -85,9 +115,15 @@ int main(int argc, char* argv[]) {
         for (char** file = files; *file != NULL; file++) {
             count++;
         }
-        SDL_assert(count == 3);
+        SDL_assert(count == 4);
         SDL_PhysFS_FreeDirectoryFiles(files);
     }
+
+    // SDL_PhysFS_IOStatus
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OK) == SDL_IO_STATUS_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_NOT_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
 
     // No lingering errors before unmount
     SDL_assert(strlen(SDL_GetError()) == 0);
