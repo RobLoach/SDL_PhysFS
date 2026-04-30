@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxext-dev libwayland-dev libxkbcommon-dev
+
       - name: Configure
         run: cmake -B build -DSDL_PHYSFS_BUILD_EXAMPLES=ON
 
