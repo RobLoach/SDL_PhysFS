@@ -1,5 +1,5 @@
 /**
- * SDL_PhysFS.h v3.0.1 - PhysFS virtual file system support for SDL.
+ * SDL_PhysFS.h v3.1.0 - PhysFS virtual file system support for SDL.
  *
  * https://github.com/RobLoach/SDL_PhysFS
  *
@@ -50,6 +50,7 @@ SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_PHYSFS_DEF bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
+SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
@@ -599,6 +600,40 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     *datasize = (size_t)read;
 
     return buffer;
+}
+
+/**
+ * Writes a data buffer to the given file. Symmetric counterpart to SDL_PhysFS_LoadFile().
+ *
+ * @param file The filename to write to in the write directory.
+ * @param buffer The data to write.
+ * @param size The number of bytes to write.
+ *
+ * @return The number of bytes written, or 0 on failure. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_LoadFile()
+ * @see SDL_PhysFS_SetWriteDir()
+ */
+size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
+    if (size == 0 || buffer == NULL) {
+        return 0;
+    }
+
+    PHYSFS_File* handle = PHYSFS_openWrite(file);
+    if (handle == NULL) {
+        SDL_PhysFS_SetError("Failed to open file for writing");
+        return 0;
+    }
+
+    PHYSFS_sint64 bytesWritten = PHYSFS_writeBytes(handle, buffer, (PHYSFS_uint64)size);
+    if (bytesWritten <= 0) {
+        SDL_PhysFS_SetError("Failed to write data to file");
+        PHYSFS_close(handle);
+        return 0;
+    }
+
+    PHYSFS_close(handle);
+    return (size_t)bytesWritten;
 }
 
 /**

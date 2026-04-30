@@ -16,11 +16,11 @@
 #define SDL_PHYSFS_IMPLEMENTATION
 #include "SDL_PhysFS.h"
 
-int main() {
-    SDL_Init(SDL_INIT_EVERYTHING);
+int main(int argc, char* argv[]) {
+    SDL_Init(SDL_INIT_VIDEO);
 
     // Initialize PhysFS
-    SDL_PhysFS_Init(0);
+    SDL_PhysFS_Init(argv[0]);
 
     // Mount
     SDL_PhysFS_Mount("assets.zip", "assets");
@@ -39,21 +39,22 @@ int main() {
 ### API
 
 ``` c
-SDL_bool SDL_PhysFS_Init();
-SDL_bool SDL_PhysFS_InitEx(const char* org, const char* app);
-SDL_bool SDL_PhysFS_Quit();
-SDL_bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
-SDL_bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
-SDL_bool SDL_PhysFS_Unmount(const char* oldDir);
-SDL_RWops* SDL_PhysFS_RWFromFile(const char* filename);
+bool SDL_PhysFS_Init(const char* argv);
+bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
+bool SDL_PhysFS_Quit();
+bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
+bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
+bool SDL_PhysFS_Unmount(const char* oldDir);
+SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
-SDL_AudioSpec* SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
-void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
+bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio_buf, Uint32* audio_len);
+void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
+size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
-SDL_bool SDL_PhysFS_SetWriteDir(const char* path);
-char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
+bool SDL_PhysFS_SetWriteDir(const char* path);
+char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
-SDL_bool SDL_PhysFS_Exists(const char* file);
+bool SDL_PhysFS_Exists(const char* file);
 
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
