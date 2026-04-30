@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
     (void)argc;
 
     // SDL_Init
-    SDL_assert(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
+    SDL_assert(SDL_Init(0));
 
     // SDL_PhysFS_InitEx
     SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));

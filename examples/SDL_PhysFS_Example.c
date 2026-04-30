@@ -106,14 +106,14 @@ int main() {
 
         if (SDL_GetAudioStreamAvailable(stream) < (int)wavLength) {
             /* feed more data to the stream. It will queue at the end, and trickle out as the hardware needs more data. */
-            SDL_PutAudioStreamData(stream, wavBuffer, wavLength);
+            SDL_PutAudioStreamData(stream, wavBuffer, (int)wavLength);
         }
 
         SDL_FRect destination = {
-            screenWidth / 2 - textureWidth / 2,
-            screenHeight / 2 - textureHeight / 2,
-            textureWidth,
-            textureHeight
+            (float)(screenWidth / 2 - textureWidth / 2),
+            (float)(screenHeight / 2 - textureHeight / 2),
+            (float)textureWidth,
+            (float)textureHeight
         };
 
         SDL_RenderClear(renderer);
