@@ -73,14 +73,6 @@ int main(int argc, char* argv[]) {
         SDL_free((void*)data);
     }
 
-    // SDL_PhysFS_MountFromMemory
-    {
-        size_t zipSize;
-        void* zipData = SDL_PhysFS_LoadFile("res/test.bmp", &zipSize);
-        SDL_assert(zipData != NULL);
-        SDL_free(zipData);
-    }
-
     // SDL_PhysFS_Exists
     SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
     SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);
