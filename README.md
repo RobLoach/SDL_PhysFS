@@ -50,7 +50,6 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio_buf, Uint32* audio_len);
 void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
-size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);

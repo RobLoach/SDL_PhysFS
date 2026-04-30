@@ -13,7 +13,10 @@ file(COPY ${examples_resources} DESTINATION "resources/")
 
 # SDL_physfs_example
 add_executable(SDL_PhysFS_Example SDL_PhysFS_Example.c)
-target_compile_options(SDL_PhysFS_Example PRIVATE -Wall -Wextra -Wconversion -Wsign-conversion)
+target_compile_options(SDL_PhysFS_Example PRIVATE
+    $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wall;-Wextra;-Wconversion;-Wsign-conversion>
+    $<$<C_COMPILER_ID:MSVC>:/W4>
+)
 target_link_libraries(SDL_PhysFS_Example PRIVATE
     SDL3::SDL3-static
     physfs-static
