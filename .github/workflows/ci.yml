@@ -17,7 +17,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxext-dev libwayland-dev libxkbcommon-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxi-dev libxss-dev libxfixes-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev \
+            libpulse-dev libasound2-dev \
+            libegl1-mesa-dev libgles2-mesa-dev \
+            libdrm-dev libgbm-dev
 
       - name: Configure
         run: cmake -B build -DSDL_PHYSFS_BUILD_EXAMPLES=ON
