@@ -54,6 +54,7 @@ bool SDL_PhysFS_SetWriteDir(const char* path);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);
+SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
