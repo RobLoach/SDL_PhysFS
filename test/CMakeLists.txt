@@ -1,3 +1,10 @@
+# CMAKE Modules
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+
+# Dependencies
+find_package(SDL3 REQUIRED)
+find_package(PhysFS REQUIRED)
+
 # SDL_physfs_test
 add_executable(SDL_PhysFS_Test SDL_PhysFS_Test.c)
 target_compile_options(SDL_PhysFS_Test PRIVATE

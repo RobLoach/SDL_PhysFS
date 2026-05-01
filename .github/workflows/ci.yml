@@ -28,7 +28,7 @@ jobs:
             libdrm-dev libgbm-dev
 
       - name: Configure
-        run: cmake -B build -DSDL_PHYSFS_BUILD_EXAMPLES=ON
+        run: cmake -B build
 
       - name: Build
         run: cmake --build build
