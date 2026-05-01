@@ -1,5 +1,5 @@
 # CMAKE Modules
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Dependencies
 find_package(SDL3 REQUIRED)
