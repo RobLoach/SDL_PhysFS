@@ -4,12 +4,26 @@
 #define SDL_PHYSFS_IMPLEMENTATION
 #include "SDL_PhysFS.h"
 
-int main() {
-    // SDL_Init
-	SDL_assert(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
+int main(int argc, char* argv[]) {
+    (void)argc;
 
-    // SDL_PhysFS_Init
-    SDL_assert(SDL_PhysFS_InitEx(NULL, "SDL_PhysFS", "Test"));
+    // SDL_Init
+    SDL_assert(SDL_Init(0));
+
+    // SDL_PhysFS_Init / SDL_PhysFS_Quit cycle
+    SDL_assert(SDL_PhysFS_Init(argv[0]));
+    SDL_assert(SDL_PhysFS_Quit());
+
+    // SDL_PhysFS_InitEx
+    SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));
+
+    // SDL_PhysFS_SetWriteDir
+    {
+        char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
+        SDL_assert(prefPath != NULL);
+        SDL_assert(SDL_PhysFS_SetWriteDir(prefPath));
+        SDL_free(prefPath);
+    }
 
     // SDL_PhysFS_Mount
     SDL_assert(SDL_PhysFS_Mount("resources", "res"));
@@ -28,15 +42,23 @@ int main() {
         size_t size;
         const char* text = (const char*)SDL_PhysFS_LoadFile("res/test.txt", &size);
         SDL_assert(text != NULL);
+        SDL_assert(size >= 12);
         SDL_assert(memcmp(text, "Hello, World", 12) == 0);
         SDL_free((void*)text);
+    }
+
+    // SDL_PhysFS_LoadFile with NULL datasize
+    {
+        void* data = SDL_PhysFS_LoadFile("res/test.txt", NULL);
+        SDL_assert(data != NULL);
+        SDL_free(data);
     }
 
     // SDL_PhysFS_LoadWAV
     {
         SDL_AudioSpec wavSpec;
         Uint32 wavLength;
-        Uint8 *wavBuffer;
+        Uint8* wavBuffer;
         SDL_assert(SDL_PhysFS_LoadWAV("res/test.wav", &wavSpec, &wavBuffer, &wavLength));
         SDL_assert(wavBuffer != NULL);
         SDL_assert(wavLength > 200);
@@ -44,16 +66,41 @@ int main() {
         SDL_free(wavBuffer);
     }
 
-    // Write
-    SDL_assert(SDL_PhysFS_Write("test.txt", "Hello World!", 12) > 5);
+    // SDL_PhysFS_IOFromFile
+    {
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_GetIOSize(io) > 0);
+        SDL_CloseIO(io);
+    }
 
-    // Load from the preferences directory
+    // SDL_PhysFS_WriteFile and read-back
+    SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
         size_t datasize;
         const char* data = (const char*)SDL_PhysFS_LoadFile("app/test.txt", &datasize);
         SDL_assert(data != NULL);
+        SDL_assert(datasize == 12);
         SDL_assert(memcmp(data, "Hello World!", 12) == 0);
         SDL_free((void*)data);
+    }
+
+    // SDL_PhysFS_MountFromMemory
+    {
+        size_t zipSize;
+        void* zipData = SDL_PhysFS_LoadFile("res/test.zip", &zipSize);
+        SDL_assert(zipData != NULL);
+        SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, (int)zipSize, "test.zip", "zip"));
+        SDL_assert(SDL_PhysFS_Exists("zip/test.txt"));
+        {
+            size_t size;
+            const char* text = (const char*)SDL_PhysFS_LoadFile("zip/test.txt", &size);
+            SDL_assert(text != NULL);
+            SDL_assert(memcmp(text, "Hello, World", 12) == 0);
+            SDL_free((void*)text);
+        }
+        SDL_assert(SDL_PhysFS_Unmount("test.zip"));
+        SDL_free(zipData);
     }
 
     // SDL_PhysFS_Exists
@@ -68,11 +115,17 @@ int main() {
         for (char** file = files; *file != NULL; file++) {
             count++;
         }
-        SDL_assert(count == 3);
+        SDL_assert(count == 4);
         SDL_PhysFS_FreeDirectoryFiles(files);
     }
 
-    // Make sure there are no errors.
+    // SDL_PhysFS_IOStatus
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OK) == SDL_IO_STATUS_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_NOT_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
+
+    // No lingering errors before unmount
     SDL_assert(strlen(SDL_GetError()) == 0);
 
     // SDL_PhysFS_Unmount
@@ -81,7 +134,7 @@ int main() {
     // SDL_PhysFS_Quit
     SDL_assert(SDL_PhysFS_Quit() == true);
 
-	SDL_Quit();
+    SDL_Quit();
 
     return 0;
 }

@@ -1,5 +1,5 @@
 /**
- * SDL_PhysFS.h v3.0.1 - PhysFS virtual file system support for SDL.
+ * SDL_PhysFS.h v3.1.0 - PhysFS virtual file system support for SDL.
  *
  * https://github.com/RobLoach/SDL_PhysFS
  *
@@ -50,7 +50,7 @@ SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_PHYSFS_DEF bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
-SDL_PHYSFS_DEF size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size);
+SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
 SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
@@ -570,14 +570,18 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     PHYSFS_File* handle = PHYSFS_openRead(filename);
     if (handle == NULL) {
         SDL_PhysFS_SetError("Failed to load file");
-        *datasize = 0;
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
         return NULL;
     }
 
     // Check to see how large the file is.
     PHYSFS_sint64 size = PHYSFS_fileLength(handle);
     if (size <= 0) {
-        *datasize = 0;
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
         PHYSFS_close(handle);
         return NULL;
     }
@@ -586,7 +590,9 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     void* buffer = SDL_malloc((size_t)size + 1);
     PHYSFS_sint64 read = PHYSFS_readBytes(handle, buffer, (PHYSFS_uint64)size);
     if (read < 0) {
-        *datasize = 0;
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
         SDL_free(buffer);
         SDL_PhysFS_SetError("Failed to read bytes from file");
         PHYSFS_close(handle);
@@ -596,31 +602,36 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
 
     // Close the file handle, and return the bytes read and the buffer.
     PHYSFS_close(handle);
-    *datasize = (size_t)read;
+    if (datasize != NULL) {
+        *datasize = (size_t)read;
+    }
 
     return buffer;
 }
 
 /**
- * Writes a data buffer to the given file.
+ * Writes a data buffer to the given file. Symmetric counterpart to SDL_PhysFS_LoadFile().
  *
- * @return The number of bytes written, or 0 on failure.
+ * @param file The filename to write to in the write directory.
+ * @param buffer The data to write.
+ * @param size The number of bytes to write.
  *
+ * @return The number of bytes written, or 0 on failure. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_LoadFile()
  * @see SDL_PhysFS_SetWriteDir()
  */
-size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size) {
+size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
     if (size == 0 || buffer == NULL) {
         return 0;
     }
 
-    // Open the file.
     PHYSFS_File* handle = PHYSFS_openWrite(file);
     if (handle == NULL) {
         SDL_PhysFS_SetError("Failed to open file for writing");
         return 0;
     }
 
-    // Write the data to the file.
     PHYSFS_sint64 bytesWritten = PHYSFS_writeBytes(handle, buffer, (PHYSFS_uint64)size);
     if (bytesWritten <= 0) {
         SDL_PhysFS_SetError("Failed to write data to file");
@@ -637,7 +648,7 @@ size_t SDL_PhysFS_Write(const char* file, const void* buffer, size_t size) {
  *
  * @return true on success, false otherwise.
  *
- * @see SDL_PhysFS_Write()
+ * @see SDL_PhysFS_WriteFile()
  */
 bool SDL_PhysFS_SetWriteDir(const char* path) {
     if (PHYSFS_setWriteDir(path) == 0) {
