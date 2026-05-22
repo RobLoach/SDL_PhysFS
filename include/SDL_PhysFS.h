@@ -689,7 +689,7 @@ bool SDL_PhysFS_SetWriteDir(const char* path) {
  *
  * @see SDL_PhysFS_FreeDirectoryFiles()
  */
-inline char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
+char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
     return PHYSFS_enumerateFiles(directory);
 }
 
@@ -698,7 +698,7 @@ inline char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
  *
  * @see SDL_PhysFS_LoadDirectoryFiles()
  */
-inline void SDL_PhysFS_FreeDirectoryFiles(char** files) {
+void SDL_PhysFS_FreeDirectoryFiles(char** files) {
     PHYSFS_freeList(files);
 }
 
@@ -707,7 +707,7 @@ inline void SDL_PhysFS_FreeDirectoryFiles(char** files) {
  *
  * @return true if it exists, false otherwise.
  */
-inline bool SDL_PhysFS_Exists(const char* file) {
+bool SDL_PhysFS_Exists(const char* file) {
     return PHYSFS_exists(file) != 0;
 }
 
