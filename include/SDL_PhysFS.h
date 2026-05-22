@@ -587,8 +587,7 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
         return NULL;
     }
 
-    // Empty file: return a 1-byte null-terminated buffer so callers get a
-    // non-NULL pointer and can distinguish "empty" from "error".
+    // Existing empty files get an empty null-terminated buffer.
     if (size == 0) {
         PHYSFS_close(handle);
         void* empty = SDL_malloc(1);
