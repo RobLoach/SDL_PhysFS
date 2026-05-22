@@ -578,12 +578,25 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
 
     // Check to see how large the file is.
     PHYSFS_sint64 size = PHYSFS_fileLength(handle);
-    if (size <= 0) {
+    if (size < 0) {
+        SDL_PhysFS_SetError("Cannot determine file size");
         if (datasize != NULL) {
             *datasize = 0;
         }
         PHYSFS_close(handle);
         return NULL;
+    }
+
+    // Empty file: return a 1-byte null-terminated buffer so callers get a
+    // non-NULL pointer and can distinguish "empty" from "error".
+    if (size == 0) {
+        PHYSFS_close(handle);
+        void* empty = SDL_malloc(1);
+        ((char*)empty)[0] = '\0';
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
+        return empty;
     }
 
     // Read the file, with an extra byte for null termination.
