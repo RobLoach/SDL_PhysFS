@@ -44,7 +44,7 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_Init(const char* argv);
 SDL_PHYSFS_DEF bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Quit();
 SDL_PHYSFS_DEF bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
-SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
+SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
@@ -309,8 +309,8 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  *
  * @see SDL_PhysFS_Mount()
  */
-bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint) {
-    if (dataSize <= 0) {
+bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint) {
+    if (dataSize == 0) {
         SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
         return false;
     }
