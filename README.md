@@ -51,6 +51,7 @@ bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio
 void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
+const char* SDL_PhysFS_GetWriteDir(void);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);

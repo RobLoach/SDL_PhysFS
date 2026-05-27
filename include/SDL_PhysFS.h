@@ -52,6 +52,7 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spe
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
+SDL_PHYSFS_DEF const char* SDL_PhysFS_GetWriteDir(void);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
 SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Exists(const char* file);
@@ -669,6 +670,17 @@ bool SDL_PhysFS_SetWriteDir(const char* path) {
     }
 
     return true;
+}
+
+/**
+ * Gets the current PhysFS write directory.
+ *
+ * @return The current write directory, or NULL if none is set.
+ *
+ * @see SDL_PhysFS_SetWriteDir()
+ */
+const char* SDL_PhysFS_GetWriteDir(void) {
+    return PHYSFS_getWriteDir();
 }
 
 /**
