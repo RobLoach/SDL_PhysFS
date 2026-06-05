@@ -19,12 +19,12 @@ set(PHYSFS_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(PHYSFS_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(PHYSFS_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 set(PHYSFS_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-
 include(FetchContent)
 FetchContent_Declare(
     physfs
     GIT_REPOSITORY https://github.com/icculus/physfs.git
-    GIT_TAG a555824
+    GIT_TAG 5f73e95
 )
 FetchContent_MakeAvailable(physfs)
 include_directories(${physfs_SOURCE_DIR}/src)
+include_directories(${physfs_SOURCE_DIR}/extras)

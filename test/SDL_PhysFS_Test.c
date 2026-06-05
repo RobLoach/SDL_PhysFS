@@ -3,6 +3,7 @@
 
 #define SDL_PHYSFS_IMPLEMENTATION
 #include "SDL_PhysFS.h"
+#include "physfssdl3.h"
 
 int main(int argc, char* argv[]) {
     (void)argc;
@@ -124,6 +125,27 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_NOT_READY);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
+
+    // PHYSFSSDL3_openRead: read a file via SDL_IOStream
+    {
+        SDL_IOStream* io = PHYSFSSDL3_openRead("res/test.txt");
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_GetIOSize(io) > 0);
+        char buf[12];
+        SDL_assert(SDL_ReadIO(io, buf, sizeof(buf)) == sizeof(buf));
+        SDL_assert(memcmp(buf, "Hello, World", 12) == 0);
+        SDL_CloseIO(io);
+    }
+
+    // PHYSFSSDL3_makeStorage: access PhysFS via SDL_Storage
+    {
+        SDL_Storage* storage = PHYSFSSDL3_makeStorage();
+        SDL_assert(storage != NULL);
+        SDL_assert(SDL_StorageReady(storage));
+        SDL_PathInfo info;
+        SDL_assert(SDL_GetStoragePathInfo(storage, "res/test.bmp", &info));
+        SDL_CloseStorage(storage);
+    }
 
     // No lingering errors before unmount
     SDL_assert(strlen(SDL_GetError()) == 0);
