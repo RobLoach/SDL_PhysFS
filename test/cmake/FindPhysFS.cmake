@@ -29,4 +29,3 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(physfs)
 include_directories(${physfs_SOURCE_DIR}/src)
-include_directories(${physfs_SOURCE_DIR}/extras)
