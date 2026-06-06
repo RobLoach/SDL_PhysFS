@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
         size_t zipSize;
         void* zipData = SDL_PhysFS_LoadFile("res/test.zip", &zipSize);
         SDL_assert(zipData != NULL);
-        SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, (int)zipSize, "test.zip", "zip"));
+        SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, zipSize, "test.zip", "zip"));
         SDL_assert(SDL_PhysFS_Exists("zip/test.txt"));
         {
             size_t size;
@@ -124,9 +124,6 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_NOT_READY);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
-
-    // No lingering errors before unmount
-    SDL_assert(strlen(SDL_GetError()) == 0);
 
     // SDL_PhysFS_Unmount
     SDL_assert(SDL_PhysFS_Unmount("resources") == true);

@@ -6,7 +6,9 @@ find_package(SDL3 REQUIRED)
 find_package(PhysFS REQUIRED)
 
 # SDL_physfs_test
-add_executable(SDL_PhysFS_Test SDL_PhysFS_Test.c)
+add_executable(SDL_PhysFS_Test
+    SDL_PhysFS_Test.c
+)
 target_compile_options(SDL_PhysFS_Test PRIVATE
     $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wall;-Wextra;-Wconversion;-Wsign-conversion>
     $<$<C_COMPILER_ID:MSVC>:/W4>
