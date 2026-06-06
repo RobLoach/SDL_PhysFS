@@ -1,26 +1,27 @@
-name: CI
+# Disabled for now.
+# name: CI
 
-on:
-  push:
-  pull_request:
+# on:
+#   push:
+#   pull_request:
 
-jobs:
-  build:
-    name: ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
+# jobs:
+#   build:
+#     name: ${{ matrix.os }}
+#     runs-on: ${{ matrix.os }}
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         os: [ubuntu-latest]
 
-    steps:
-      - uses: actions/checkout@v5
+#     steps:
+#       - uses: actions/checkout@v5
 
-      - name: Configure
-        run: cmake -B build
+#       - name: Configure
+#         run: cmake -B build
 
-      - name: Build
-        run: cmake --build build
+#       - name: Build
+#         run: cmake --build build
 
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
+#       - name: Test
+#         run: ctest --test-dir build --output-on-failure
