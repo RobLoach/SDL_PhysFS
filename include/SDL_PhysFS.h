@@ -48,6 +48,9 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, si
 SDL_PHYSFS_DEF bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
+SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);
+SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);
+SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename);
 SDL_PHYSFS_DEF bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** audio_buf, Uint32 * audio_len);
 SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize);
 SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
@@ -541,6 +544,54 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
     }
 
     return SDL_LoadBMP_IO(io, 1);
+}
+
+/**
+ * Loads a JPG file from PhysFS.
+ *
+ * @param filename The filename of the JPG file to load.
+ *
+ * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
+ */
+SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename) {
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
+    if (io == NULL) {
+        return NULL;
+    }
+
+    return SDL_LoadJPG_IO(io, 1);
+}
+
+/**
+ * Loads a PNG file from PhysFS.
+ *
+ * @param filename The filename of the PNG file to load.
+ *
+ * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
+ */
+SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename) {
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
+    if (io == NULL) {
+        return NULL;
+    }
+
+    return SDL_LoadPNG_IO(io, 1);
+}
+
+/**
+ * Loads a surface from any supported image format through PhysFS.
+ *
+ * @param filename The filename of the image file to load.
+ *
+ * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
+ */
+SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename) {
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
+    if (io == NULL) {
+        return NULL;
+    }
+
+    return SDL_LoadSurface_IO(io, NULL, 1);
 }
 
 /**
