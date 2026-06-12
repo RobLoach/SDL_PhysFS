@@ -91,7 +91,7 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
 #define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_RW(SDL_PhysFS_IOFromFile(filename), 1))
 #endif  // SDL_PhysFS_STBIMG_Load
 
-#ifndef SDL_PhysFS_Mix_LoadMUS
+#ifndef SDL_PhysFS_MIX_LoadAudio
 /**
  * Load a supported audio format with SDL_mixer into a music object through PhysFS.
  *
@@ -101,8 +101,8 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
  *
  * @see https://github.com/libsdl-org/SDL_mixer
  */
-#define SDL_PhysFS_Mix_LoadMUS(filename) (Mix_LoadMUS_IO(SDL_PhysFS_IOFromFile(filename), 1))
-#endif  // SDL_PhysFS_Mix_LoadMUS
+#define SDL_PhysFS_MIX_LoadAudio(filename) (Mix_LoadAudio_IO(SDL_PhysFS_IOFromFile(filename), 1))
+#endif  // SDL_PhysFS_MIX_LoadAudio
 
 #ifndef SDL_PhysFS_TTF_OpenFont
 /**

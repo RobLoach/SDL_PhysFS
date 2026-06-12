@@ -62,7 +62,7 @@ SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
-Mix_Music* SDL_PhysFS_Mix_LoadMUS(const char* filename);   // SDL_mixer
+Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
 TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
 ```
