@@ -8,10 +8,27 @@ project(SDL_PhysFS
 
 # SDL_PhysFS
 add_library(SDL_PhysFS INTERFACE)
-target_include_directories(SDL_PhysFS INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(SDL_PhysFS INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Install
+include(CMakePackageConfigHelpers)
+install(TARGETS SDL_PhysFS EXPORT SDL_PhysFSTargets)
+install(FILES include/SDL_PhysFS.h DESTINATION include)
+install(EXPORT SDL_PhysFSTargets
+    FILE SDL_PhysFSConfig.cmake
+    NAMESPACE SDL_PhysFS::
+    DESTINATION lib/cmake/SDL_PhysFS
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
+    COMPATIBILITY SameMajorVersion
+)
 install(FILES
-    include/SDL_PhysFS.h
-    DESTINATION include
+    "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
+    DESTINATION lib/cmake/SDL_PhysFS
 )
 
 # Testing
