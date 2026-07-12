@@ -126,6 +126,19 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
 #define SDL_PhysFS_TTF_OpenFont(filename, ptsize) (TTF_OpenFontIO(SDL_PhysFS_IOFromFile(filename), true, ptsize))
 #endif  // SDL_PhysFS_TTF_OpenFont
 
+#ifndef SDL_PhysFS_AddGamepadMappings
+/**
+ * Load a set of gamepad mappings from PhysFS.
+ *
+ * @param filename A const char* representing the file to load from PhysFS.
+ *
+ * @return Returns the number of mappings added or -1 on failure; call SDL_GetError() for more information.
+ *
+ * @see https://wiki.libsdl.org/SDL3/SDL_AddGamepadMappingsFromIO
+ */
+#define SDL_PhysFS_AddGamepadMappings(filename) (SDL_AddGamepadMappingsFromIO(SDL_PhysFS_IOFromFile(filename), true))
+#endif // SDL_PhysFS_AddGamepadMappings
+
 #ifdef __cplusplus
 }
 #endif
