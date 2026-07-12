@@ -1,5 +1,5 @@
 /**
- * SDL_PhysFS.h v3.1.0 - PhysFS virtual file system support for SDL.
+ * SDL_PhysFS.h v3.2.1 - PhysFS virtual file system support for SDL.
  *
  * https://github.com/RobLoach/SDL_PhysFS
  *
@@ -36,10 +36,17 @@
 #endif
 #endif
 
+#define SDL_PHYSFS_MAJOR_VERSION 3
+#define SDL_PHYSFS_MINOR_VERSION 2
+#define SDL_PHYSFS_MICRO_VERSION 1
+#define SDL_PHYSFS_VERSION SDL_VERSIONNUM(SDL_PHYSFS_MAJOR_VERSION, SDL_PHYSFS_MINOR_VERSION, SDL_PHYSFS_MICRO_VERSION)
+#define SDL_PHYSFS_VERSION_ATLEAST(X, Y, Z) (SDL_PHYSFS_VERSION >= SDL_VERSIONNUM(X, Y, Z))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+SDL_PHYSFS_DEF int SDL_PhysFS_GetVersion(void);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Init(const char* argv);
 SDL_PHYSFS_DEF bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Quit();
@@ -181,6 +188,15 @@ static void SDL_PhysFS_AllocatorFree(void* mem) {
     SDL_free_func free_func;
     SDL_GetMemoryFunctions(NULL, NULL, NULL, &free_func);
     return free_func(mem);
+}
+
+/**
+ * Get the version of SDL_PhysFS that is linked against your program.
+ *
+ * @return Returns the version of the linked library.
+ */
+int SDL_PhysFS_GetVersion(void) {
+    return SDL_PHYSFS_VERSION;
 }
 
 /**

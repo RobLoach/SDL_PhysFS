@@ -54,12 +54,13 @@ bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio
 void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
-const char* SDL_PhysFS_GetWriteDir(void);
+const char* SDL_PhysFS_GetWriteDir();
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void* userdata);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);
 SDL_IOStatus SDL_PhysFS_IOStatus(int error);
+int SDL_PhysFS_GetVersion();
 
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
