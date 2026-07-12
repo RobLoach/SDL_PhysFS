@@ -52,6 +52,7 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_InitEx(const char* argv, const char* org, const c
 SDL_PHYSFS_DEF bool SDL_PhysFS_Quit();
 SDL_PHYSFS_DEF bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
 SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint);
+SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_PHYSFS_DEF SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_PHYSFS_DEF SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
@@ -352,7 +353,7 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  *
  * @param fileData The archive data as a file buffer.
  * @param dataSize The size of the file buffer.
- * @param newDir A filename that can represent the file data. Has to be unique. For example: data.zip
+ * @param newDir Filename that can represent this stream.
  * @param mountPoint The location in the tree that the archive will be mounted.
  *
  * @return true on success, false otherwise.
@@ -371,6 +372,32 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
     }
 
     return true;
+}
+
+/**
+ * Mounts the given IOStream as a mount point in PhysFS.
+ *
+ * @param src The IOStream to mount.
+ * @param newDir Filename that can represent this stream.
+ * @param mountPoint The location in the tree that the archive will be mounted.
+ * @param closeio if true, calls SDL_CloseIO() on src before returning, even in the case of an error.
+ *
+ * @return true on success, false otherwise.
+ *
+ * @see SDL_PhysFS_Mount()
+ */
+SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio) {
+    if (src == NULL || newDir == NULL) {
+        return SDL_InvalidParamError("src or newDir");
+    }
+
+    size_t dataSize = 0;
+    void* fileData = SDL_LoadFile_IO(src, &dataSize, closeio);
+    if (fileData == NULL) {
+        return false;
+    }
+
+    return SDL_PhysFS_MountFromMemory(fileData, dataSize, newDir, mountPoint);
 }
 
 /**
