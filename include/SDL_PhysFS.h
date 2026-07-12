@@ -57,6 +57,7 @@ SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer,
 SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_PHYSFS_DEF const char* SDL_PhysFS_GetWriteDir(void);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
+SDL_PHYSFS_DEF bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void *userdata);
 SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Exists(const char* file);
 SDL_PHYSFS_DEF SDL_IOStatus SDL_PhysFS_IOStatus(int error);
@@ -149,16 +150,37 @@ extern "C" {
 #define SDL_PhysFS_SetError(description) do { SDL_SetError("SDL_PhysFS.h:%d: %s (%s)", __LINE__, description, PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode())); } while(0)
 #endif
 
+/**
+ * PhysFS Allocator Callback to malloc().
+ *
+ * @internal
+ */
 static void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
     SDL_malloc_func malloc_func;
     SDL_GetMemoryFunctions(&malloc_func, NULL, NULL, NULL);
     return malloc_func((size_t)size);
 }
 
+/**
+ * PhysFS Allocator Callback to realloc().
+ *
+ * @internal
+ */
 static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
     SDL_realloc_func realloc_func;
     SDL_GetMemoryFunctions(NULL, NULL, &realloc_func, NULL);
     return realloc_func(mem, (size_t)size);
+}
+
+/**
+ * PhysFS Allocator Callback to free().
+ *
+ * @internal
+ */
+static void SDL_PhysFS_AllocatorFree(void* mem) {
+    SDL_free_func free_func;
+    SDL_GetMemoryFunctions(NULL, NULL, NULL, &free_func);
+    return free_func(mem);
 }
 
 /**
@@ -175,7 +197,7 @@ bool SDL_PhysFS_Init(const char* argv) {
     allocator.Deinit = NULL;
     allocator.Malloc = &SDL_PhysFS_AllocatorMalloc;
     allocator.Realloc = &SDL_PhysFS_AllocatorRealloc;
-    allocator.Free = &SDL_free;
+    allocator.Free = &SDL_PhysFS_AllocatorFree;
     PHYSFS_setAllocator(&allocator);
 
     if (PHYSFS_init(argv) == 0) {
@@ -187,9 +209,9 @@ bool SDL_PhysFS_Init(const char* argv) {
 }
 
 /**
- * Initializes the PhysFS virtual file system with access to SDL's preferences directory as /app.
+ * Initializes the PhysFS virtual file system with access to SDL's preferences directory.
  *
- * Mounts the writable preferences directory as "/app".
+ * Mounts the writable preferences directory as "/pref".
  *
  * @param org The name of your organization.
  * @param app The name of your application.
@@ -199,26 +221,21 @@ bool SDL_PhysFS_Init(const char* argv) {
  * @see SDL_PhysFS_Init()
  */
 bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app) {
-    // Initialize
-    if (SDL_PhysFS_Init(argv) == false) {
-        return false;
-    }
-
     // Find the preferences path.
     char* path = SDL_GetPrefPath(org, app);
     if (path == NULL) {
-        SDL_PhysFS_Quit();
         SDL_PhysFS_SetError("Failed to find SDL's pref directory");
         return false;
     }
 
-    // Set up the write directory as /app
-    if (!SDL_PhysFS_SetWriteDir(path)) {
+    // Initialize
+    if (SDL_PhysFS_Init(argv) == false) {
         SDL_free(path);
-        SDL_PhysFS_Quit();
         return false;
     }
-    if (!SDL_PhysFS_Mount(path, "app")) {
+
+    // Set up the write directory as /app
+    if (!SDL_PhysFS_SetWriteDir(path) || !SDL_PhysFS_Mount(path, "pref")) {
         SDL_free(path);
         SDL_PhysFS_Quit();
         return false;
@@ -443,7 +460,9 @@ size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t size, 
     wc = PHYSFS_writeBytes(handle, ptr, (PHYSFS_uint64)size);
     if (wc < 0) {
         SDL_PhysFS_SetError("Failed to write file");
-        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        if (status) {
+            *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        }
         wc = 0;
     }
 
@@ -496,21 +515,20 @@ bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
  * Creates a SDL_IOStream based on the given PHYSFS_File.
  */
 SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
-    SDL_IOStream *retval = NULL;
-
-    if (handle != NULL) {
-        SDL_IOStreamInterface iface;
-        SDL_INIT_INTERFACE(&iface);
-        iface.size = SDL_PhysFS_GetIOSize;
-        iface.seek  = SDL_PhysFS_SeekIO;
-        iface.read  = SDL_PhysFS_ReadIO;
-        iface.write = SDL_PhysFS_WriteIO;
-        iface.flush = SDL_PhysFS_FlushIO;
-        iface.close = SDL_PhysFS_CloseIO;
-        retval = SDL_OpenIO(&iface, (void*)handle);
+    if (handle == NULL) {
+        SDL_InvalidParamError("handle");
+        return NULL;
     }
 
-    return retval;
+    SDL_IOStreamInterface iface;
+    SDL_INIT_INTERFACE(&iface);
+    iface.size = SDL_PhysFS_GetIOSize;
+    iface.seek  = SDL_PhysFS_SeekIO;
+    iface.read  = SDL_PhysFS_ReadIO;
+    iface.write = SDL_PhysFS_WriteIO;
+    iface.flush = SDL_PhysFS_FlushIO;
+    iface.close = SDL_PhysFS_CloseIO;
+    return SDL_OpenIO(&iface, (void*)handle);
 }
 
 /**
@@ -554,12 +572,18 @@ SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename) {
  * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
  */
 SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename) {
+#if SDL_VERSION_ATLEAST(3, 6, 0)
     SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
     if (io == NULL) {
         return NULL;
     }
 
-    return SDL_LoadJPG_IO(io, 1);
+    return SDL_LoadJPG_IO(io, true);
+#else
+    (void)filename;
+    SDL_PhysFS_SetError("SDL_PhysFS_LoadJPG requires SDL 3.6.0 or newer");
+    return NULL;
+#endif
 }
 
 /**
@@ -591,7 +615,7 @@ SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename) {
         return NULL;
     }
 
-    return SDL_LoadSurface_IO(io, NULL, 1);
+    return SDL_LoadSurface_IO(io, true);
 }
 
 /**
@@ -619,6 +643,11 @@ bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** aud
  * @return A new memory buffer containing all the data from the file. NULL on failure, use SDL_GetError() for details.
  */
 void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
+    if (filename == NULL) {
+        SDL_InvalidParamError("filename");
+        return NULL;
+    }
+
     PHYSFS_File* handle = PHYSFS_openRead(filename);
     if (handle == NULL) {
         SDL_PhysFS_SetError("Failed to load file");
@@ -686,7 +715,7 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
  * @see SDL_PhysFS_SetWriteDir()
  */
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
-    if (size == 0 || buffer == NULL) {
+    if (file == NULL || size == 0 || buffer == NULL) {
         return 0;
     }
 
@@ -754,6 +783,49 @@ const char* SDL_PhysFS_GetWriteDir(void) {
  */
 char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
     return PHYSFS_enumerateFiles(directory);
+}
+
+/**
+ * Enumerate a directory in PhysFS through a callback function.
+ *
+ * The callback is called once for each entry in the directory, until all
+ * entries have been provided or the callback returns SDL_ENUM_SUCCESS or
+ * SDL_ENUM_FAILURE.
+ *
+ * @param path The path of the directory to enumerate.
+ * @param callback A function that is called for each entry in the directory.
+ * @param userdata A pointer that is passed to the callback.
+ *
+ * @return true on success, or false if there was a problem or the callback
+ *         returned SDL_ENUM_FAILURE. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_LoadDirectoryFiles()
+ */
+bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void *userdata) {
+    if (callback == NULL) {
+        return SDL_InvalidParamError("callback");
+    }
+
+    char** directoryFiles = SDL_PhysFS_LoadDirectoryFiles(path);
+    if (!directoryFiles) {
+        SDL_PhysFS_SetError("Failed to enumerate directory");
+        return false;
+    }
+
+    bool result = true;
+    for (char** file = directoryFiles; *file != NULL; file++) {
+        SDL_EnumerationResult enumResult = callback(userdata, path, *file);
+        if (enumResult == SDL_ENUM_FAILURE) {
+            result = false;
+            break;
+        }
+        if (enumResult == SDL_ENUM_SUCCESS) {
+            break;
+        }
+    }
+
+    SDL_PhysFS_FreeDirectoryFiles(directoryFiles);
+    return result;
 }
 
 /**

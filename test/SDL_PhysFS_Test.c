@@ -4,6 +4,13 @@
 #define SDL_PHYSFS_IMPLEMENTATION
 #include "SDL_PhysFS.h"
 
+static SDL_EnumerationResult SDLCALL enumerateCounter(void* userdata, const char* dirname, const char* fname) {
+    (void)dirname;
+    (void)fname;
+    (*(int*)userdata)++;
+    return SDL_ENUM_CONTINUE;
+}
+
 int main(int argc, char* argv[]) {
     (void)argc;
 
@@ -78,7 +85,7 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
         size_t datasize;
-        const char* data = (const char*)SDL_PhysFS_LoadFile("app/test.txt", &datasize);
+        const char* data = (const char*)SDL_PhysFS_LoadFile("pref/test.txt", &datasize);
         SDL_assert(data != NULL);
         SDL_assert(datasize == 12);
         SDL_assert(memcmp(data, "Hello World!", 12) == 0);
@@ -117,6 +124,13 @@ int main(int argc, char* argv[]) {
         }
         SDL_assert(count == 4);
         SDL_PhysFS_FreeDirectoryFiles(files);
+    }
+
+    // SDL_PhysFS_EnumerateDirectory
+    {
+        int count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateCounter, &count));
+        SDL_assert(count == 4);
     }
 
     // SDL_PhysFS_IOStatus

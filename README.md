@@ -47,7 +47,7 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, con
 bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
-SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);
+SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);    // SDL 3.6.0+
 SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename);
 bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio_buf, Uint32* audio_len);
@@ -56,6 +56,7 @@ size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
 const char* SDL_PhysFS_GetWriteDir(void);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
+bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void* userdata);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);
 SDL_IOStatus SDL_PhysFS_IOStatus(int error);
