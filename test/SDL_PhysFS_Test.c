@@ -114,6 +114,9 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
     SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);
 
+    // SDL_PhysFS_GetVersion
+    SDL_assert(SDL_PhysFS_GetVersion() > 2);
+
     // SDL_PhysFS_LoadDirectoryFiles
     {
         char** files = SDL_PhysFS_LoadDirectoryFiles("res");
