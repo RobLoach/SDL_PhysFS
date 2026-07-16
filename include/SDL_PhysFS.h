@@ -127,6 +127,19 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
 #define SDL_PhysFS_TTF_OpenFont(filename, ptsize) (TTF_OpenFontIO(SDL_PhysFS_IOFromFile(filename), true, ptsize))
 #endif  // SDL_PhysFS_TTF_OpenFont
 
+#ifndef SDL_PhysFS_LoadSVG
+/**
+ * Load an SVG file from PhysFS into an SDL_Surface.
+ *
+ * Requires SDL 3.6.0 or newer.
+ *
+ * @param filename A const char* representing the file to load from PhysFS.
+ *
+ * @return The SDL_Surface*, or NULL on failure. Use SDL_GetError() to get more information.
+ */
+#define SDL_PhysFS_LoadSVG(filename) (SDL_LoadSVG_IO(SDL_PhysFS_IOFromFile(filename), true))
+#endif  // SDL_PhysFS_LoadSVG
+
 #ifndef SDL_PhysFS_AddGamepadMappings
 /**
  * Load a set of gamepad mappings from PhysFS.

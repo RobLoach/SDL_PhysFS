@@ -62,6 +62,8 @@ bool SDL_PhysFS_Exists(const char* file);
 SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 int SDL_PhysFS_GetVersion();
 
+SDL_Surface* SDL_PhysFS_LoadSVG(const char* filename);             // SDL 3.6.0+
+
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
 Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
