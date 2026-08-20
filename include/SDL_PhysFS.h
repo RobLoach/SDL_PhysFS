@@ -458,6 +458,11 @@ Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhence whe
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 pos = 0;
 
+    if (handle == NULL) {
+        SDL_InvalidParamError("userdata");
+        return -1;
+    }
+
     if (whence == SDL_IO_SEEK_SET) {
         pos = (PHYSFS_sint64) offset;
     }
@@ -757,6 +762,10 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
     if (size == 0) {
         PHYSFS_close(handle);
         void* empty = SDL_malloc(1);
+        if (empty == NULL) {
+            SDL_OutOfMemory();
+            return NULL;
+        }
         ((char*)empty)[0] = '\0';
         if (datasize != NULL) {
             *datasize = 0;
@@ -766,6 +775,14 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
 
     // Read the file, with an extra byte for null termination.
     void* buffer = SDL_malloc((size_t)size + 1);
+    if (buffer == NULL) {
+        SDL_OutOfMemory();
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
+        PHYSFS_close(handle);
+        return NULL;
+    }
     PHYSFS_sint64 read = PHYSFS_readBytes(handle, buffer, (PHYSFS_uint64)size);
     if (read < 0) {
         if (datasize != NULL) {
@@ -801,6 +818,7 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
  */
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
     if (file == NULL || size == 0 || buffer == NULL) {
+        SDL_InvalidParamError("file, buffer or size");
         return 0;
     }
 
