@@ -399,7 +399,7 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
  *
  * @see SDL_PhysFS_Mount()
  */
-SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio) {
+bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio) {
     if (src == NULL || newDir == NULL) {
         return SDL_InvalidParamError("src or newDir");
     }
@@ -436,7 +436,7 @@ bool SDL_PhysFS_Unmount(const char* oldDir) {
  *
  * @internal
  */
-Sint64 SDLCALL SDL_PhysFS_GetIOSize(void *userdata) {
+static Sint64 SDLCALL SDL_PhysFS_GetIOSize(void *userdata) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     if (handle == NULL) {
         return 0;
@@ -450,7 +450,7 @@ Sint64 SDLCALL SDL_PhysFS_GetIOSize(void *userdata) {
  *
  * @internal
  */
-Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhence whence) {
+static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhence whence) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 pos = 0;
 
@@ -502,7 +502,7 @@ Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhence whe
  *
  * @internal
  */
-size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOStatus *status) {
+static size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOStatus *status) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
     if (rc <= 0) {
@@ -518,7 +518,7 @@ size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOS
  *
  * @internal
  */
-size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status) {
+static size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 wc;
 
@@ -543,7 +543,7 @@ size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t size, 
  *
  * @internal
  */
-bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
+static bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
     PHYSFS_File* handle = (PHYSFS_File *)userdata;
     if (handle == NULL) {
         return false;
@@ -565,7 +565,7 @@ bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
  *
  * @internal
  */
-bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
+static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
 
     if (handle != NULL) {
