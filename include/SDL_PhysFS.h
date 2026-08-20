@@ -137,7 +137,11 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
  *
  * @return The SDL_Surface*, or NULL on failure. Use SDL_GetError() to get more information.
  */
+#if SDL_VERSION_ATLEAST(3, 6, 0)
 #define SDL_PhysFS_LoadSVG(filename) (SDL_LoadSVG_IO(SDL_PhysFS_IOFromFile(filename), true))
+#else
+#define SDL_PhysFS_LoadSVG(filename) ((void)(filename), SDL_SetError("SDL_PhysFS_LoadSVG requires SDL 3.6.0 or newer"), (SDL_Surface*)NULL)
+#endif
 #endif  // SDL_PhysFS_LoadSVG
 
 #ifndef SDL_PhysFS_AddGamepadMappings
@@ -663,12 +667,18 @@ SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename) {
  * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
  */
 SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename) {
+#if SDL_VERSION_ATLEAST(3, 4, 0)
     SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
     if (io == NULL) {
         return NULL;
     }
 
     return SDL_LoadPNG_IO(io, 1);
+#else
+    (void)filename;
+    SDL_PhysFS_SetError("SDL_PhysFS_LoadPNG requires SDL 3.4.0 or newer");
+    return NULL;
+#endif
 }
 
 /**
@@ -679,12 +689,18 @@ SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename) {
  * @return The SDL_Surface, or NULL on failure, use SDL_GetError() for details.
  */
 SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename) {
+#if SDL_VERSION_ATLEAST(3, 4, 0)
     SDL_IOStream* io = SDL_PhysFS_IOFromFile(filename);
     if (io == NULL) {
         return NULL;
     }
 
     return SDL_LoadSurface_IO(io, true);
+#else
+    (void)filename;
+    SDL_PhysFS_SetError("SDL_PhysFS_LoadSurface requires SDL 3.4.0 or newer");
+    return NULL;
+#endif
 }
 
 /**
