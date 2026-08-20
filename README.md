@@ -48,8 +48,8 @@ bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);    // SDL 3.6.0+
-SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);
-SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename);
+SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);    // SDL 3.4.0+
+SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename); // SDL 3.4.0+
 bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio_buf, Uint32* audio_len);
 void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
