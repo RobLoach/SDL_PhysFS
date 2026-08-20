@@ -388,15 +388,6 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
 }
 
 /**
- * PhysFS unmount callback to free the buffer owned by SDL_PhysFS_MountFromIO().
- *
- * @internal
- */
-static void SDL_PhysFS_MountFromIOFree(void* fileData) {
-    SDL_free(fileData);
-}
-
-/**
  * Mounts the given IOStream as a mount point in PhysFS.
  *
  * @param src The IOStream to mount.
@@ -425,8 +416,8 @@ SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir
         return false;
     }
 
-    // PhysFS owns the buffer, and frees it through the callback on unmount.
-    if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, SDL_PhysFS_MountFromIOFree, newDir, mountPoint, 1) == 0) {
+    // PhysFS owns the buffer, and frees it with SDL_free() on unmount.
+    if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, SDL_free, newDir, mountPoint, 1) == 0) {
         SDL_free(fileData);
         SDL_PhysFS_SetError("Failed to mount IOStream data");
         return false;
