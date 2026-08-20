@@ -81,6 +81,18 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
+    // Reading to the end of an IOStream reports SDL_IO_STATUS_EOF
+    {
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
+        SDL_assert(io != NULL);
+        char buffer[256];
+        while (SDL_ReadIO(io, buffer, sizeof(buffer)) > 0) {
+            // Keep reading until the end of the file.
+        }
+        SDL_assert(SDL_GetIOStatus(io) == SDL_IO_STATUS_EOF);
+        SDL_CloseIO(io);
+    }
+
     // SDL_PhysFS_WriteFile and read-back
     SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
@@ -139,7 +151,9 @@ int main(int argc, char* argv[]) {
     // SDL_PhysFS_IOStatus
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OK) == SDL_IO_STATUS_READY);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
-    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_NOT_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_ERROR);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_UNSUPPORTED) == SDL_IO_STATUS_ERROR);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_NOT_INITIALIZED) == SDL_IO_STATUS_NOT_READY);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
 
     // SDL_PhysFS_Unmount

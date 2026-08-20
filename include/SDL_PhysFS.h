@@ -313,11 +313,11 @@ SDL_IOStatus SDL_PhysFS_IOStatus(int error) {
     switch ((PHYSFS_ErrorCode)error) {
         case PHYSFS_ERR_OK: return SDL_IO_STATUS_READY;
         case PHYSFS_ERR_OTHER_ERROR: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_OUT_OF_MEMORY: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_OUT_OF_MEMORY: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_NOT_INITIALIZED: return SDL_IO_STATUS_NOT_READY;
         case PHYSFS_ERR_IS_INITIALIZED: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_ARGV0_IS_NULL: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_UNSUPPORTED: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_UNSUPPORTED: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_PAST_EOF: return SDL_IO_STATUS_EOF;
         case PHYSFS_ERR_FILES_STILL_OPEN: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_INVALID_ARGUMENT: return SDL_IO_STATUS_ERROR;
@@ -514,9 +514,13 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
 static size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOStatus *status) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
     PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
-    if (rc <= 0) {
+    if (rc < 0) {
         *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
         rc = 0;
+    }
+    else if (rc == 0 && size > 0) {
+        // A zero-byte read at the end of the file is a clean end-of-file, not an error.
+        *status = PHYSFS_eof(handle) ? SDL_IO_STATUS_EOF : SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
     }
 
     return (size_t)rc;
