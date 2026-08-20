@@ -122,6 +122,22 @@ int main(int argc, char* argv[]) {
         SDL_free(zipData);
     }
 
+    // SDL_PhysFS_MountFromIO
+    {
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.zip");
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_PhysFS_MountFromIO(io, "testio.zip", "zipio", true));
+        SDL_assert(SDL_PhysFS_Exists("zipio/test.txt"));
+        {
+            size_t size;
+            const char* text = (const char*)SDL_PhysFS_LoadFile("zipio/test.txt", &size);
+            SDL_assert(text != NULL);
+            SDL_assert(memcmp(text, "Hello, World", 12) == 0);
+            SDL_free((void*)text);
+        }
+        SDL_assert(SDL_PhysFS_Unmount("testio.zip"));
+    }
+
     // SDL_PhysFS_Exists
     SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
     SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);

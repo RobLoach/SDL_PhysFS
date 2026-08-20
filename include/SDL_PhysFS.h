@@ -414,7 +414,20 @@ bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* m
         return false;
     }
 
-    return SDL_PhysFS_MountFromMemory(fileData, dataSize, newDir, mountPoint);
+    if (dataSize == 0) {
+        SDL_free(fileData);
+        SDL_SetError("SDL_PhysFS_MountFromIO: Cannot mount a data size of 0");
+        return false;
+    }
+
+    // PhysFS owns the buffer, and frees it with SDL_free() on unmount.
+    if (PHYSFS_mountMemory(fileData, (PHYSFS_uint64)dataSize, SDL_free, newDir, mountPoint, 1) == 0) {
+        SDL_free(fileData);
+        SDL_PhysFS_SetError("Failed to mount IOStream data");
+        return false;
+    }
+
+    return true;
 }
 
 /**
