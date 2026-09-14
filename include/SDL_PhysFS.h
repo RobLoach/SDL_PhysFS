@@ -49,7 +49,7 @@ extern "C" {
 SDL_PHYSFS_DEF int SDL_PhysFS_GetVersion(void);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Init(const char* argv);
 SDL_PHYSFS_DEF bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
-SDL_PHYSFS_DEF bool SDL_PhysFS_Quit();
+SDL_PHYSFS_DEF bool SDL_PhysFS_Quit(void);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
 SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint);
 SDL_PHYSFS_DEF bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
@@ -297,7 +297,7 @@ bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app) {
  *
  * @return true on success, false otherwise.
  */
-bool SDL_PhysFS_Quit() {
+bool SDL_PhysFS_Quit(void) {
     if (PHYSFS_deinit() == 0) {
         SDL_PhysFS_SetError("Failed to deinitialize PhysFS");
         return false;
@@ -609,7 +609,7 @@ static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
 /**
  * Creates a SDL_IOStream based on the given PHYSFS_File.
  */
-SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
+SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
     if (handle == NULL) {
         SDL_InvalidParamError("handle");
         return NULL;
