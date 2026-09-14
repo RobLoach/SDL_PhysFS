@@ -41,11 +41,13 @@ int main(int argc, char* argv[]) {
 ``` c
 bool SDL_PhysFS_Init(const char* argv);
 bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
-bool SDL_PhysFS_Quit();
+bool SDL_PhysFS_Quit(void);
 bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
-bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, int dataSize, const char* newDir, const char* mountPoint);
+bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint);
+bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
 bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
+SDL_IOStream* SDL_PhysFS_OpenIO(PHYSFS_File* handle);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);    // SDL 3.6.0+
 SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);    // SDL 3.4.0+
@@ -54,16 +56,17 @@ bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio
 void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
-const char* SDL_PhysFS_GetWriteDir();
+const char* SDL_PhysFS_GetWriteDir(void);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void* userdata);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);
 SDL_IOStatus SDL_PhysFS_IOStatus(int error);
-int SDL_PhysFS_GetVersion();
+int SDL_PhysFS_GetVersion(void);
 
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_LoadSVG(const char* filename);     // SDL 3.6.0+
+int SDL_PhysFS_AddGamepadMappings(const char* filename);
 SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
 Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
 TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
