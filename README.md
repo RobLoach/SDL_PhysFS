@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
 ``` c
 bool SDL_PhysFS_Init(const char* argv);
 bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app);
-bool SDL_PhysFS_Quit();
+bool SDL_PhysFS_Quit(void);
 bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint);
 bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint);
 bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
