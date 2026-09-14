@@ -47,7 +47,7 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
 bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
 bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
-SDL_IOStream* SDL_PhysFS_OpenIO(PHYSFS_File* handle); // Requires physfs.h to be included first
+SDL_IOStream* SDL_PhysFS_OpenIO(PHYSFS_File* handle);
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);    // SDL 3.6.0+
 SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);    // SDL 3.4.0+
@@ -72,8 +72,6 @@ Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
 TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
 ```
-
-`SDL_PhysFS_MountFromMemory()` does not copy `fileData`, so the buffer must stay valid until the archive is unmounted. Use `SDL_PhysFS_MountFromIO()` to hand ownership of the data to PhysFS instead.
 
 ## License
 
