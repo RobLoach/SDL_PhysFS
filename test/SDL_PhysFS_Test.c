@@ -11,6 +11,17 @@ static SDL_EnumerationResult SDLCALL enumerateCounter(void* userdata, const char
     return SDL_ENUM_CONTINUE;
 }
 
+// Looks for a name in a NULL-terminated list of filenames.
+static bool listContains(char** files, const char* name) {
+    for (char** file = files; *file != NULL; file++) {
+        if (SDL_strcmp(*file, name) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int main(int argc, char* argv[]) {
     (void)argc;
 
@@ -268,22 +279,33 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_GetVersion() > 2);
 
     // SDL_PhysFS_LoadDirectoryFiles
+    int resourceCount = 0;
     {
         char** files = SDL_PhysFS_LoadDirectoryFiles("res");
         SDL_assert(files != NULL);
-        int count = 0;
+
         for (char** file = files; *file != NULL; file++) {
-            count++;
+            resourceCount++;
         }
-        SDL_assert(count == 4);
+
+        // Assert on the resources the tests actually depend on, rather than on
+        // a hard-coded total that breaks whenever a file is added to
+        // test/resources/.
+        SDL_assert(listContains(files, "test.bmp"));
+        SDL_assert(listContains(files, "test.txt"));
+        SDL_assert(listContains(files, "test.wav"));
+        SDL_assert(listContains(files, "test.zip"));
+        SDL_assert(listContains(files, "notfound.txt") == false);
+        SDL_assert(resourceCount >= 4);
+
         SDL_PhysFS_FreeDirectoryFiles(files);
     }
 
-    // SDL_PhysFS_EnumerateDirectory
+    // SDL_PhysFS_EnumerateDirectory walks the same entries.
     {
         int count = 0;
         SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateCounter, &count));
-        SDL_assert(count == 4);
+        SDL_assert(count == resourceCount);
     }
 
     // SDL_PhysFS_IOStatus
