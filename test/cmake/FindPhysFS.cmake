@@ -21,11 +21,14 @@ set(PHYSFS_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(PHYSFS_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(PHYSFS_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(PHYSFS_INSTALL OFF CACHE BOOL "" FORCE)
+# Pinned to a commit rather than a tag so that builds stay reproducible.
+# PHYSFS_PLATFORM_SDL3 above is only available on main, as the newest PhysFS
+# release (3.2.0) predates it, so there is no tag to track instead.
 include(FetchContent)
 FetchContent_Declare(
     physfs
     GIT_REPOSITORY https://github.com/icculus/physfs.git
-    GIT_TAG main
+    GIT_TAG c30aa9086d4caf7548ee76655376aa7aa9098ffc
 )
 FetchContent_MakeAvailable(physfs)
 include_directories(${physfs_SOURCE_DIR}/src)
