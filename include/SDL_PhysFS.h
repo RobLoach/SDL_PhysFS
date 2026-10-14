@@ -772,6 +772,13 @@ bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec * spec, Uint8 ** aud
 /**
  * Loads all the file data from a given filename.
  *
+ * The returned buffer always has a null terminator written one byte past
+ * datasize, so text files can be used as a C string directly.
+ *
+ * Either the whole file is returned or the call fails: if the file turns out to
+ * hold less data than its reported length, as happens with a truncated or
+ * corrupt archive, this fails rather than returning a partial buffer.
+ *
  * @param filename The name of the file to load.
  * @param datasize Where to put the resulting size of the file.
  *
@@ -828,15 +835,31 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
         PHYSFS_close(handle);
         return NULL;
     }
-    PHYSFS_sint64 read = PHYSFS_readBytes(handle, buffer, (PHYSFS_uint64)size);
-    if (read < 0) {
-        if (datasize != NULL) {
-            *datasize = 0;
+    // Keep reading until the buffer is full. A single PHYSFS_readBytes() call
+    // is not guaranteed to return everything that was asked for, so a short
+    // read is only a failure once it stops making progress.
+    PHYSFS_sint64 read = 0;
+    while (read < size) {
+        PHYSFS_sint64 bytes = PHYSFS_readBytes(handle, (char*)buffer + read, (PHYSFS_uint64)(size - read));
+        if (bytes <= 0) {
+            if (datasize != NULL) {
+                *datasize = 0;
+            }
+            SDL_free(buffer);
+            if (bytes < 0) {
+                SDL_PhysFS_SetError("Failed to read bytes from file");
+            }
+            else {
+                // The file claimed to be longer than the data behind it, which
+                // means a truncated or corrupt archive.
+                SDL_SetError("SDL_PhysFS_LoadFile: Unexpected end of '%s' after %" SDL_PRIs64 " of %" SDL_PRIs64 " bytes",
+                    filename, (Sint64)read, (Sint64)size);
+            }
+            PHYSFS_close(handle);
+            return NULL;
         }
-        SDL_free(buffer);
-        SDL_PhysFS_SetError("Failed to read bytes from file");
-        PHYSFS_close(handle);
-        return NULL;
+
+        read += bytes;
     }
     ((char*)buffer)[read] = '\0';
 
