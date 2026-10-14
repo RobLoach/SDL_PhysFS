@@ -1,5 +1,5 @@
 /**
- * SDL_PhysFS.h v3.2.1 - PhysFS virtual file system support for SDL.
+ * SDL_PhysFS.h v3.3.0 - PhysFS virtual file system support for SDL.
  *
  * https://github.com/RobLoach/SDL_PhysFS
  *
@@ -37,8 +37,8 @@
 #endif
 
 #define SDL_PHYSFS_MAJOR_VERSION 3
-#define SDL_PHYSFS_MINOR_VERSION 2
-#define SDL_PHYSFS_MICRO_VERSION 1
+#define SDL_PHYSFS_MINOR_VERSION 3
+#define SDL_PHYSFS_MICRO_VERSION 0
 #define SDL_PHYSFS_VERSION SDL_VERSIONNUM(SDL_PHYSFS_MAJOR_VERSION, SDL_PHYSFS_MINOR_VERSION, SDL_PHYSFS_MICRO_VERSION)
 #define SDL_PHYSFS_VERSION_ATLEAST(X, Y, Z) (SDL_PHYSFS_VERSION >= SDL_VERSIONNUM(X, Y, Z))
 
@@ -64,10 +64,13 @@ SDL_PHYSFS_DEF void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize)
 SDL_PHYSFS_DEF size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 SDL_PHYSFS_DEF bool SDL_PhysFS_SetWriteDir(const char* path);
 SDL_PHYSFS_DEF const char* SDL_PhysFS_GetWriteDir(void);
+SDL_PHYSFS_DEF bool SDL_PhysFS_CreateDirectory(const char* path);
+SDL_PHYSFS_DEF bool SDL_PhysFS_RemovePath(const char* path);
 SDL_PHYSFS_DEF char** SDL_PhysFS_LoadDirectoryFiles(const char *directory);
 SDL_PHYSFS_DEF bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void *userdata);
 SDL_PHYSFS_DEF void SDL_PhysFS_FreeDirectoryFiles(char** files);
 SDL_PHYSFS_DEF bool SDL_PhysFS_Exists(const char* file);
+SDL_PHYSFS_DEF bool SDL_PhysFS_GetPathInfo(const char* path, SDL_PathInfo* info);
 SDL_PHYSFS_DEF SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 
 #ifdef _INCLUDE_PHYSFS_H_
@@ -368,7 +371,26 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
 /**
  * Mounts the given file data as a mount point in PhysFS.
  *
- * @param fileData The archive data as a file buffer.
+ * The buffer is *not* copied. PhysFS reads directly out of fileData for as long
+ * as the archive stays mounted, so the caller keeps ownership of the buffer and
+ * must keep it alive until after SDL_PhysFS_Unmount(), then free it itself.
+ * Freeing it any earlier leaves PhysFS reading freed memory.
+ *
+ * @code
+ * size_t size;
+ * void* data = SDL_PhysFS_LoadFile("assets.zip", &size);
+ * SDL_PhysFS_MountFromMemory(data, size, "assets.zip", "assets");
+ * // ... use the mounted files ...
+ * SDL_PhysFS_Unmount("assets.zip");
+ * SDL_free(data);               // Only safe once it is unmounted.
+ * @endcode
+ *
+ * To hand the buffer's lifetime over to PhysFS instead, use
+ * SDL_PhysFS_MountFromIO(), which takes ownership of the data it reads and
+ * frees it on unmount.
+ *
+ * @param fileData The archive data as a file buffer. Must stay valid until the
+ *                 archive is unmounted.
  * @param dataSize The size of the file buffer.
  * @param newDir Filename that can represent this stream.
  * @param mountPoint The location in the tree that the archive will be mounted.
@@ -376,6 +398,8 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  * @return true on success, false otherwise.
  *
  * @see SDL_PhysFS_Mount()
+ * @see SDL_PhysFS_MountFromIO()
+ * @see SDL_PhysFS_Unmount()
  */
 bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint) {
     if (dataSize == 0) {
@@ -393,6 +417,10 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
 
 /**
  * Mounts the given IOStream as a mount point in PhysFS.
+ *
+ * The stream is read into a buffer that PhysFS then owns and frees on unmount,
+ * so unlike SDL_PhysFS_MountFromMemory() there is nothing for the caller to
+ * keep alive or free afterwards.
  *
  * @param src The IOStream to mount.
  * @param newDir Filename that can represent this stream.
@@ -884,6 +912,57 @@ const char* SDL_PhysFS_GetWriteDir(void) {
 }
 
 /**
+ * Creates a directory, along with any missing parent directories, in the write
+ * directory.
+ *
+ * Succeeds if the directory already exists.
+ *
+ * @param path The directory to create, in platform-independent notation.
+ *
+ * @return true on success, false otherwise. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_SetWriteDir()
+ * @see SDL_PhysFS_RemovePath()
+ */
+bool SDL_PhysFS_CreateDirectory(const char* path) {
+    if (path == NULL) {
+        return SDL_InvalidParamError("path");
+    }
+
+    if (PHYSFS_mkdir(path) == 0) {
+        SDL_PhysFS_SetError("Failed to create directory");
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Deletes a file or directory from the write directory.
+ *
+ * Directories must be empty before they can be removed.
+ *
+ * @param path The file or directory to delete, in platform-independent notation.
+ *
+ * @return true on success, false otherwise. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_SetWriteDir()
+ * @see SDL_PhysFS_CreateDirectory()
+ */
+bool SDL_PhysFS_RemovePath(const char* path) {
+    if (path == NULL) {
+        return SDL_InvalidParamError("path");
+    }
+
+    if (PHYSFS_delete(path) == 0) {
+        SDL_PhysFS_SetError("Failed to remove path");
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Loads a list of files from the given directory.
  *
  * Make sure to unload the list by using SDL_PhysFS_FreeDirectoryFiles().
@@ -964,6 +1043,95 @@ void SDL_PhysFS_FreeDirectoryFiles(char** files) {
  */
 bool SDL_PhysFS_Exists(const char* file) {
     return PHYSFS_exists(file) != 0;
+}
+
+/**
+ * Converts a PhysFS timestamp, in seconds, to an SDL_Time, in nanoseconds.
+ *
+ * PhysFS reports -1 for timestamps an archive does not carry, which becomes 0.
+ *
+ * @internal
+ */
+static SDL_Time SDL_PhysFS_StatTime(PHYSFS_sint64 seconds) {
+    if (seconds < 0) {
+        return 0;
+    }
+
+    return (SDL_Time)seconds * SDL_NS_PER_SECOND;
+}
+
+/**
+ * Queries information about a path in the search path.
+ *
+ * Unlike SDL_PhysFS_Exists(), this reports whether the path is a file or a
+ * directory, which is what makes it possible to recurse through
+ * SDL_PhysFS_EnumerateDirectory().
+ *
+ * @code
+ * SDL_PathInfo info;
+ * if (SDL_PhysFS_GetPathInfo("res/test.txt", &info)) {
+ *     SDL_Log("%s, %" SDL_PRIu64 " bytes",
+ *         info.type == SDL_PATHTYPE_DIRECTORY ? "directory" : "file", info.size);
+ * }
+ * @endcode
+ *
+ * PhysFS never follows symbolic links, so a symlink is reported as
+ * SDL_PATHTYPE_OTHER rather than the type of whatever it points at. Archives
+ * that carry no timestamps report 0 for the time fields.
+ *
+ * @param path The path to query, in platform-independent notation.
+ * @param info Where to put the resulting information. May be NULL to only test
+ *             whether the path exists.
+ *
+ * @return true on success, false if the path does not exist or could not be
+ *         queried. Use SDL_GetError() for details.
+ *
+ * @see SDL_PhysFS_Exists()
+ * @see SDL_PhysFS_EnumerateDirectory()
+ */
+bool SDL_PhysFS_GetPathInfo(const char* path, SDL_PathInfo* info) {
+    if (info != NULL) {
+        SDL_zerop(info);
+    }
+
+    if (path == NULL) {
+        return SDL_InvalidParamError("path");
+    }
+
+    PHYSFS_Stat stat;
+    if (PHYSFS_stat(path, &stat) == 0) {
+        SDL_PhysFS_SetError("Failed to query path information");
+        return false;
+    }
+
+    if (info == NULL) {
+        return true;
+    }
+
+    switch (stat.filetype) {
+        case PHYSFS_FILETYPE_REGULAR:
+            info->type = SDL_PATHTYPE_FILE;
+            break;
+        case PHYSFS_FILETYPE_DIRECTORY:
+            info->type = SDL_PATHTYPE_DIRECTORY;
+            break;
+        case PHYSFS_FILETYPE_SYMLINK:
+        case PHYSFS_FILETYPE_OTHER:
+        default:
+            info->type = SDL_PATHTYPE_OTHER;
+            break;
+    }
+
+    // PhysFS reports -1 for the size of directories and of anything unknown.
+    if (stat.filesize > 0) {
+        info->size = (Uint64)stat.filesize;
+    }
+
+    info->create_time = SDL_PhysFS_StatTime(stat.createtime);
+    info->modify_time = SDL_PhysFS_StatTime(stat.modtime);
+    info->access_time = SDL_PhysFS_StatTime(stat.accesstime);
+
+    return true;
 }
 
 #ifdef __cplusplus

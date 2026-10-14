@@ -57,10 +57,13 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
 const char* SDL_PhysFS_GetWriteDir(void);
+bool SDL_PhysFS_CreateDirectory(const char* path);
+bool SDL_PhysFS_RemovePath(const char* path);
 char** SDL_PhysFS_LoadDirectoryFiles(const char* directory);
 bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void* userdata);
 void SDL_PhysFS_FreeDirectoryFiles(char** files);
 bool SDL_PhysFS_Exists(const char* file);
+bool SDL_PhysFS_GetPathInfo(const char* path, SDL_PathInfo* info);
 SDL_IOStatus SDL_PhysFS_IOStatus(int error);
 int SDL_PhysFS_GetVersion(void);
 
@@ -72,6 +75,21 @@ Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
 TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
 ```
+
+### Mounting from memory
+
+`SDL_PhysFS_MountFromMemory()` does not copy the buffer it is given. PhysFS reads straight out of it while the archive is mounted, so keep the buffer alive until after `SDL_PhysFS_Unmount()` and free it yourself:
+
+``` c
+size_t size;
+void* data = SDL_PhysFS_LoadFile("assets.zip", &size);
+SDL_PhysFS_MountFromMemory(data, size, "assets.zip", "assets");
+// ... use the mounted files ...
+SDL_PhysFS_Unmount("assets.zip");
+SDL_free(data);               // Only safe once it is unmounted.
+```
+
+`SDL_PhysFS_MountFromIO()` works the other way around: it takes ownership of the data it reads and frees it on unmount, so there is nothing left to clean up.
 
 ## License
 
