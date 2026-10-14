@@ -852,9 +852,17 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
 /**
  * Writes a data buffer to the given file. Symmetric counterpart to SDL_PhysFS_LoadFile().
  *
+ * Writing always replaces the file, so a size of 0 creates an empty file, or
+ * truncates an existing one. This mirrors SDL_PhysFS_LoadFile(), which reads
+ * empty files back successfully.
+ *
+ * Note that a size of 0 makes the return value ambiguous on its own, since
+ * there are no bytes to report: both success and failure return 0. Check
+ * SDL_PhysFS_Exists() if an empty write needs to be told apart from a failure.
+ *
  * @param file The filename to write to in the write directory.
- * @param buffer The data to write.
- * @param size The number of bytes to write.
+ * @param buffer The data to write. May be NULL only when size is 0.
+ * @param size The number of bytes to write. 0 writes an empty file.
  *
  * @return The number of bytes written, or 0 on failure. Use SDL_GetError() for details.
  *
@@ -862,14 +870,29 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
  * @see SDL_PhysFS_SetWriteDir()
  */
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
-    if (file == NULL || size == 0 || buffer == NULL) {
-        SDL_InvalidParamError("file, buffer or size");
+    if (file == NULL) {
+        SDL_InvalidParamError("file");
+        return 0;
+    }
+
+    if (buffer == NULL && size > 0) {
+        SDL_InvalidParamError("buffer");
         return 0;
     }
 
     PHYSFS_File* handle = PHYSFS_openWrite(file);
     if (handle == NULL) {
         SDL_PhysFS_SetError("Failed to open file for writing");
+        return 0;
+    }
+
+    // Opening for writing has already truncated the file, so an empty write has
+    // nothing left to do.
+    if (size == 0) {
+        if (!PHYSFS_close(handle)) {
+            SDL_PhysFS_SetError("Failed to close file");
+        }
+
         return 0;
     }
 

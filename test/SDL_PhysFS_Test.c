@@ -169,6 +169,38 @@ int main(int argc, char* argv[]) {
         SDL_free((void*)data);
     }
 
+    // SDL_PhysFS_WriteFile with a size of 0 writes an empty file, which
+    // SDL_PhysFS_LoadFile() then reads back as empty.
+    {
+        SDL_assert(SDL_PhysFS_WriteFile("empty.txt", NULL, 0) == 0);
+        SDL_assert(SDL_PhysFS_Exists("pref/empty.txt") == true);
+
+        size_t datasize = 123;
+        void* data = SDL_PhysFS_LoadFile("pref/empty.txt", &datasize);
+        SDL_assert(data != NULL);
+        SDL_assert(datasize == 0);
+        SDL_free(data);
+    }
+
+    // An empty write truncates a file that already has contents.
+    {
+        SDL_assert(SDL_PhysFS_WriteFile("empty.txt", "data", 4) == 4);
+        SDL_assert(SDL_PhysFS_WriteFile("empty.txt", NULL, 0) == 0);
+
+        size_t datasize = 123;
+        void* data = SDL_PhysFS_LoadFile("pref/empty.txt", &datasize);
+        SDL_assert(data != NULL);
+        SDL_assert(datasize == 0);
+        SDL_free(data);
+
+        SDL_assert(SDL_PhysFS_RemovePath("empty.txt"));
+    }
+
+    // A NULL buffer is only allowed when nothing is being written.
+    SDL_assert(SDL_PhysFS_WriteFile("invalid.txt", NULL, 4) == 0);
+    SDL_assert(SDL_PhysFS_Exists("pref/invalid.txt") == false);
+    SDL_assert(SDL_PhysFS_WriteFile(NULL, "data", 4) == 0);
+
     // SDL_PhysFS_MountFromMemory
     {
         size_t zipSize;
