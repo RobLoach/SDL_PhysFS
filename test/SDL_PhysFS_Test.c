@@ -24,11 +24,13 @@ int main(int argc, char* argv[]) {
     // SDL_PhysFS_InitEx
     SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));
 
-    // SDL_PhysFS_SetWriteDir
+    // SDL_PhysFS_SetWriteDir / SDL_PhysFS_GetWriteDir
     {
         char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
         SDL_assert(prefPath != NULL);
         SDL_assert(SDL_PhysFS_SetWriteDir(prefPath));
+        SDL_assert(SDL_PhysFS_GetWriteDir() != NULL);
+        SDL_assert(SDL_strlen(SDL_PhysFS_GetWriteDir()) > 0);
         SDL_free(prefPath);
     }
 
@@ -93,6 +95,58 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
+    // Seeking an IOStream, which exercises the SDL_PhysFS_SeekIO() callback
+    // through every SDL_IOWhence. res/test.txt is the 13 bytes "Hello, World!".
+    {
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_GetIOSize(io) == 13);
+
+        char buffer[16];
+
+        // A fresh stream sits at the start of the file.
+        SDL_assert(SDL_TellIO(io) == 0);
+
+        // SDL_IO_SEEK_SET seeks from the start.
+        SDL_assert(SDL_SeekIO(io, 7, SDL_IO_SEEK_SET) == 7);
+        SDL_assert(SDL_ReadIO(io, buffer, 5) == 5);
+        SDL_assert(memcmp(buffer, "World", 5) == 0);
+
+        // SDL_IO_SEEK_CUR with a zero offset reports the position without
+        // moving it, which is the path SDL_TellIO() takes.
+        SDL_assert(SDL_SeekIO(io, 0, SDL_IO_SEEK_CUR) == 12);
+        SDL_assert(SDL_SeekIO(io, 0, SDL_IO_SEEK_CUR) == 12);
+
+        // SDL_IO_SEEK_CUR seeks backwards and forwards from there.
+        SDL_assert(SDL_SeekIO(io, -5, SDL_IO_SEEK_CUR) == 7);
+        SDL_assert(SDL_ReadIO(io, buffer, 1) == 1);
+        SDL_assert(buffer[0] == 'W');
+        SDL_assert(SDL_SeekIO(io, 4, SDL_IO_SEEK_CUR) == 12);
+        SDL_assert(SDL_ReadIO(io, buffer, 1) == 1);
+        SDL_assert(buffer[0] == '!');
+
+        // SDL_IO_SEEK_END seeks from the end of the file.
+        SDL_assert(SDL_SeekIO(io, 0, SDL_IO_SEEK_END) == 13);
+        SDL_assert(SDL_SeekIO(io, -6, SDL_IO_SEEK_END) == 7);
+        SDL_assert(SDL_ReadIO(io, buffer, 5) == 5);
+        SDL_assert(memcmp(buffer, "World", 5) == 0);
+
+        // Seeking back to the start still works after reaching the end.
+        SDL_assert(SDL_SeekIO(io, 0, SDL_IO_SEEK_END) == 13);
+        SDL_assert(SDL_SeekIO(io, 0, SDL_IO_SEEK_SET) == 0);
+        SDL_assert(SDL_ReadIO(io, buffer, 5) == 5);
+        SDL_assert(memcmp(buffer, "Hello", 5) == 0);
+
+        // Seeking before the start of the file fails, whichever whence asks
+        // for it, and leaves the position where it was.
+        SDL_assert(SDL_SeekIO(io, -1, SDL_IO_SEEK_SET) == -1);
+        SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_CUR) == -1);
+        SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_TellIO(io) == 5);
+
+        SDL_CloseIO(io);
+    }
+
     // SDL_PhysFS_WriteFile and read-back
     SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
@@ -138,9 +192,77 @@ int main(int argc, char* argv[]) {
         SDL_assert(SDL_PhysFS_Unmount("testio.zip"));
     }
 
+    // SDL_PhysFS_CreateDirectory / SDL_PhysFS_RemovePath
+    {
+        // SDL_PhysFS_WriteFile() cannot create missing parent directories, so
+        // the directory has to exist before writing into it.
+        SDL_assert(SDL_PhysFS_CreateDirectory("saves"));
+
+        // Creating a directory that already exists is not an error.
+        SDL_assert(SDL_PhysFS_CreateDirectory("saves"));
+
+        SDL_assert(SDL_PhysFS_WriteFile("saves/slot1.sav", "save", 4) == 4);
+        SDL_assert(SDL_PhysFS_Exists("pref/saves/slot1.sav") == true);
+
+        // Paths here are relative to the write directory, whereas
+        // SDL_PhysFS_Exists() searches the mounted tree, where the write
+        // directory sits at pref.
+        SDL_assert(SDL_PhysFS_RemovePath("saves/slot1.sav"));
+        SDL_assert(SDL_PhysFS_Exists("pref/saves/slot1.sav") == false);
+
+        // The directory is empty now, so it can be removed too.
+        SDL_assert(SDL_PhysFS_RemovePath("saves"));
+        SDL_assert(SDL_PhysFS_Exists("pref/saves") == false);
+
+        // Removing something that is not there fails.
+        SDL_assert(SDL_PhysFS_RemovePath("saves/slot1.sav") == false);
+
+        // NULL paths are rejected rather than passed through.
+        SDL_assert(SDL_PhysFS_CreateDirectory(NULL) == false);
+        SDL_assert(SDL_PhysFS_RemovePath(NULL) == false);
+    }
+
     // SDL_PhysFS_Exists
     SDL_assert(SDL_PhysFS_Exists("res/test.bmp") == true);
     SDL_assert(SDL_PhysFS_Exists("res/notfound.txt") == false);
+
+    // SDL_PhysFS_GetPathInfo
+    {
+        SDL_PathInfo info;
+
+        // A regular file reports its type, size and modification time.
+        SDL_assert(SDL_PhysFS_GetPathInfo("res/test.txt", &info));
+        SDL_assert(info.type == SDL_PATHTYPE_FILE);
+        SDL_assert(info.size == 13u);
+        SDL_assert(info.modify_time > 0);
+
+        // A directory reports no size. Unlike SDL_PhysFS_Exists(), which is
+        // true for both of these, the type tells the two apart.
+        SDL_assert(SDL_PhysFS_GetPathInfo("res", &info));
+        SDL_assert(info.type == SDL_PATHTYPE_DIRECTORY);
+        SDL_assert(info.size == 0u);
+        SDL_assert(SDL_PhysFS_Exists("res") == true);
+
+        // Files inside an archive are reported the same way.
+        SDL_assert(SDL_PhysFS_GetPathInfo("res/test.zip", &info));
+        SDL_assert(info.type == SDL_PATHTYPE_FILE);
+        SDL_assert(info.size > 0u);
+
+        // A NULL info only tests for existence.
+        SDL_assert(SDL_PhysFS_GetPathInfo("res/test.txt", NULL) == true);
+        SDL_assert(SDL_PhysFS_GetPathInfo("res/notfound.txt", NULL) == false);
+
+        // Missing paths fail, and clear the struct rather than leaving it as it
+        // was found.
+        SDL_assert(SDL_PhysFS_GetPathInfo("res/notfound.txt", &info) == false);
+        SDL_assert(info.type == SDL_PATHTYPE_NONE);
+        SDL_assert(info.size == 0u);
+        SDL_assert(info.modify_time == 0);
+
+        // NULL paths are rejected rather than passed through.
+        SDL_assert(SDL_PhysFS_GetPathInfo(NULL, &info) == false);
+        SDL_assert(SDL_PhysFS_GetPathInfo(NULL, NULL) == false);
+    }
 
     // SDL_PhysFS_GetVersion
     SDL_assert(SDL_PhysFS_GetVersion() > 2);
