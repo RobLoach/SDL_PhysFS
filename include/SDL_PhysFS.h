@@ -554,12 +554,20 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
  */
 static size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, SDL_IOStatus *status) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
-    PHYSFS_sint64 rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
+    PHYSFS_sint64 rc;
+
+    if (handle == NULL) {
+        return 0;
+    }
+
+    rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
     if (rc < 0) {
-        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        if (status != NULL) {
+            *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        }
         rc = 0;
     }
-    else if (rc == 0 && size > 0) {
+    else if (rc == 0 && size > 0 && status != NULL) {
         // A zero-byte read at the end of the file is a clean end-of-file, not an error.
         *status = PHYSFS_eof(handle) ? SDL_IO_STATUS_EOF : SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
     }
