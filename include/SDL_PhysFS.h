@@ -548,6 +548,25 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
 }
 
 /**
+ * Reports the latest PhysFS error to SDL, and returns the matching SDL_IOStatus.
+ *
+ * PHYSFS_getLastErrorCode() resets the error code once it is read, so this
+ * reads it only once, and uses it for both the message and the status. As this
+ * is only called on failure, it never reports SDL_IO_STATUS_READY.
+ *
+ * @internal
+ */
+static SDL_IOStatus SDL_PhysFS_IOError(const char* description, int line) {
+    const PHYSFS_ErrorCode err = PHYSFS_getLastErrorCode();
+    SDL_SetError("SDL_PhysFS.h:%d: %s (%s)", line, description, PHYSFS_getErrorByCode(err));
+    if (err == PHYSFS_ERR_OK) {
+        return SDL_IO_STATUS_ERROR;
+    }
+
+    return SDL_PhysFS_IOStatus((int)err);
+}
+
+/**
  * SDL_IOStream callback: read.
  *
  * @internal
@@ -562,14 +581,25 @@ static size_t SDLCALL SDL_PhysFS_ReadIO(void *userdata, void *ptr, size_t size, 
 
     rc = PHYSFS_readBytes(handle, ptr, (PHYSFS_uint64)size);
     if (rc < 0) {
+        const SDL_IOStatus error = SDL_PhysFS_IOError("Failed to read file", __LINE__);
         if (status != NULL) {
-            *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+            *status = error;
         }
         rc = 0;
     }
-    else if (rc == 0 && size > 0 && status != NULL) {
+    else if (rc == 0 && size > 0) {
         // A zero-byte read at the end of the file is a clean end-of-file, not an error.
-        *status = PHYSFS_eof(handle) ? SDL_IO_STATUS_EOF : SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        if (PHYSFS_eof(handle)) {
+            if (status != NULL) {
+                *status = SDL_IO_STATUS_EOF;
+            }
+        }
+        else {
+            const SDL_IOStatus error = SDL_PhysFS_IOError("Failed to read file", __LINE__);
+            if (status != NULL) {
+                *status = error;
+            }
+        }
     }
 
     return (size_t)rc;
@@ -589,12 +619,15 @@ static size_t SDLCALL SDL_PhysFS_WriteIO(void *userdata, const void *ptr, size_t
     }
 
     wc = PHYSFS_writeBytes(handle, ptr, (PHYSFS_uint64)size);
-    if (wc < 0) {
-        SDL_PhysFS_SetError("Failed to write file");
-        if (status) {
-            *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+    if (wc < 0 || (PHYSFS_uint64)wc < (PHYSFS_uint64)size) {
+        // PhysFS only writes fewer bytes than asked for when something failed.
+        const SDL_IOStatus error = SDL_PhysFS_IOError("Failed to write file", __LINE__);
+        if (status != NULL) {
+            *status = error;
         }
-        wc = 0;
+        if (wc < 0) {
+            wc = 0;
+        }
     }
 
     return (size_t)wc;
@@ -615,8 +648,9 @@ static bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
         return true;
     }
 
+    const SDL_IOStatus error = SDL_PhysFS_IOError("Failed to flush file", __LINE__);
     if (status != NULL) {
-        *status = SDL_PhysFS_IOStatus(PHYSFS_getLastErrorCode());
+        *status = error;
     }
 
     return false;

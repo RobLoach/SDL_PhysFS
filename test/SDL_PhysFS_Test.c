@@ -158,6 +158,20 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
+    // Writing to a stream opened for reading fails, and keeps the PhysFS error
+    // rather than reporting the stream as ready.
+    {
+        PHYSFS_File* handle = PHYSFS_openRead("res/test.txt");
+        SDL_assert(handle != NULL);
+        SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_WriteIO(io, "data", 4) == 0);
+        SDL_assert(SDL_GetIOStatus(io) != SDL_IO_STATUS_READY);
+        SDL_assert(SDL_strstr(SDL_GetError(), "Failed to write file") != NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_OPEN_FOR_READING)) != NULL);
+        SDL_CloseIO(io);
+    }
+
     // SDL_PhysFS_WriteFile and read-back
     SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
