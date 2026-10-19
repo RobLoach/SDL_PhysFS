@@ -197,6 +197,11 @@ extern "C" {
  * @internal
  */
 static void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
+    // On 32-bit platforms, a 64-bit size could wrap around to a small one.
+    if (size > SDL_SIZE_MAX) {
+        return NULL;
+    }
+
     SDL_malloc_func malloc_func;
     SDL_GetMemoryFunctions(&malloc_func, NULL, NULL, NULL);
     return malloc_func((size_t)size);
@@ -208,6 +213,11 @@ static void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
  * @internal
  */
 static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
+    // On 32-bit platforms, a 64-bit size could wrap around to a small one.
+    if (size > SDL_SIZE_MAX) {
+        return NULL;
+    }
+
     SDL_realloc_func realloc_func;
     SDL_GetMemoryFunctions(NULL, NULL, &realloc_func, NULL);
     return realloc_func(mem, (size_t)size);
@@ -876,6 +886,18 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
             *datasize = 0;
         }
         return empty;
+    }
+
+    // The file, plus the null terminator, has to fit in a size_t. On 32-bit
+    // platforms a file of 4GB or more would otherwise wrap around to a small
+    // allocation, which the read below would then overflow.
+    if ((PHYSFS_uint64)size >= SDL_SIZE_MAX) {
+        SDL_SetError("SDL_PhysFS_LoadFile: '%s' is too large to load into memory", filename);
+        if (datasize != NULL) {
+            *datasize = 0;
+        }
+        PHYSFS_close(handle);
+        return NULL;
     }
 
     // Read the file, with an extra byte for null termination.

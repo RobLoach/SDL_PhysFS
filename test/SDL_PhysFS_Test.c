@@ -172,6 +172,11 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
+    // The PhysFS allocator callbacks refuse sizes that cannot be allocated,
+    // rather than truncating them to a size_t on 32-bit platforms.
+    SDL_assert(SDL_PhysFS_AllocatorMalloc(SDL_MAX_UINT64) == NULL);
+    SDL_assert(SDL_PhysFS_AllocatorRealloc(NULL, SDL_MAX_UINT64) == NULL);
+
     // SDL_PhysFS_WriteFile and read-back
     SDL_assert(SDL_PhysFS_WriteFile("test.txt", "Hello World!", 12) == 12);
     {
