@@ -1,27 +1,28 @@
-# Disabled for now.
-# name: CI
+name: CI
 
-# on:
-#   push:
-#   pull_request:
+on:
+  push:
+  pull_request:
 
-# jobs:
-#   build:
-#     name: ${{ matrix.os }}
-#     runs-on: ${{ matrix.os }}
-#     strategy:
-#       fail-fast: false
-#       matrix:
-#         os: [ubuntu-latest]
+jobs:
+  build:
+    name: ubuntu-latest
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - uses: actions/checkout@v5
+    env:
+      # Fail fast on an SDL_assert() rather than waiting for a response.
+      SDL_ASSERT: abort
 
-#       - name: Configure
-#         run: cmake -B build
+    steps:
+      - uses: actions/checkout@v7
 
-#       - name: Build
-#         run: cmake --build build
+      # The tests are written with SDL_assert(), which compiles out at SDL's
+      # default assert level in optimized builds, so build Debug to run them.
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
-#       - name: Test
-#         run: ctest --test-dir build --output-on-failure
+      - name: Build
+        run: cmake --build build -j4
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
