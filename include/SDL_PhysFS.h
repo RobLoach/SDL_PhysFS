@@ -312,12 +312,22 @@ bool SDL_PhysFS_Quit(void) {
     return true;
 }
 
+/**
+ * Converts a PHYSFS_ErrorCode into the matching SDL_IOStatus.
+ *
+ * SDL_IO_STATUS_NOT_READY is never returned, as SDL treats it as a non-blocking
+ * stream asking to be tried again, which would retry a failed operation forever.
+ *
+ * @param error The PHYSFS_ErrorCode to convert.
+ *
+ * @return SDL_IO_STATUS_READY for PHYSFS_ERR_OK, otherwise the SDL_IOStatus that best describes the error.
+ */
 SDL_IOStatus SDL_PhysFS_IOStatus(int error) {
     switch ((PHYSFS_ErrorCode)error) {
         case PHYSFS_ERR_OK: return SDL_IO_STATUS_READY;
         case PHYSFS_ERR_OTHER_ERROR: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_OUT_OF_MEMORY: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_NOT_INITIALIZED: return SDL_IO_STATUS_NOT_READY;
+        case PHYSFS_ERR_NOT_INITIALIZED: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_IS_INITIALIZED: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_ARGV0_IS_NULL: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_UNSUPPORTED: return SDL_IO_STATUS_ERROR;
@@ -328,10 +338,10 @@ SDL_IOStatus SDL_PhysFS_IOStatus(int error) {
         case PHYSFS_ERR_NOT_FOUND: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_SYMLINK_FORBIDDEN: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_NO_WRITE_DIR: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_OPEN_FOR_READING: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_OPEN_FOR_WRITING: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_OPEN_FOR_READING: return SDL_IO_STATUS_READONLY;
+        case PHYSFS_ERR_OPEN_FOR_WRITING: return SDL_IO_STATUS_WRITEONLY;
         case PHYSFS_ERR_NOT_A_FILE: return SDL_IO_STATUS_ERROR;
-        case PHYSFS_ERR_READ_ONLY: return SDL_IO_STATUS_ERROR;
+        case PHYSFS_ERR_READ_ONLY: return SDL_IO_STATUS_READONLY;
         case PHYSFS_ERR_CORRUPT: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_SYMLINK_LOOP: return SDL_IO_STATUS_ERROR;
         case PHYSFS_ERR_IO: return SDL_IO_STATUS_ERROR;
@@ -346,7 +356,8 @@ SDL_IOStatus SDL_PhysFS_IOStatus(int error) {
         case PHYSFS_ERR_APP_CALLBACK: return SDL_IO_STATUS_ERROR;
     }
 
-    return SDL_IO_STATUS_READY;
+    // Any error code this does not know about is still an error.
+    return SDL_IO_STATUS_ERROR;
 }
 
 /**

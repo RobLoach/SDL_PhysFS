@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
         SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
         SDL_assert(io != NULL);
         SDL_assert(SDL_WriteIO(io, "data", 4) == 0);
-        SDL_assert(SDL_GetIOStatus(io) != SDL_IO_STATUS_READY);
+        SDL_assert(SDL_GetIOStatus(io) == SDL_IO_STATUS_READONLY);
         SDL_assert(SDL_strstr(SDL_GetError(), "Failed to write file") != NULL);
         SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_OPEN_FOR_READING)) != NULL);
         SDL_CloseIO(io);
@@ -359,7 +359,11 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_PAST_EOF) == SDL_IO_STATUS_EOF);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OUT_OF_MEMORY) == SDL_IO_STATUS_ERROR);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_UNSUPPORTED) == SDL_IO_STATUS_ERROR);
-    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_NOT_INITIALIZED) == SDL_IO_STATUS_NOT_READY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_NOT_INITIALIZED) == SDL_IO_STATUS_ERROR);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OPEN_FOR_READING) == SDL_IO_STATUS_READONLY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_READ_ONLY) == SDL_IO_STATUS_READONLY);
+    SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_OPEN_FOR_WRITING) == SDL_IO_STATUS_WRITEONLY);
+    SDL_assert(SDL_PhysFS_IOStatus(-1) == SDL_IO_STATUS_ERROR);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
 
     // SDL_PhysFS_Unmount
