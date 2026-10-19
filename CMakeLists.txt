@@ -6,6 +6,16 @@ project(SDL_PhysFS
     LANGUAGES C
 )
 
+# By default, only install when SDL_PhysFS is the top-level project, so that
+# projects pulling it in with add_subdirectory() or FetchContent do not get it
+# installed into their prefix.
+if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(SDL_PHYSFS_IS_TOP_LEVEL ON)
+else()
+    set(SDL_PHYSFS_IS_TOP_LEVEL OFF)
+endif()
+option(SDL_PHYSFS_INSTALL "Install SDL_PhysFS" ${SDL_PHYSFS_IS_TOP_LEVEL})
+
 # SDL_PhysFS
 add_library(SDL_PhysFS INTERFACE)
 target_include_directories(SDL_PhysFS INTERFACE
@@ -14,25 +24,27 @@ target_include_directories(SDL_PhysFS INTERFACE
 )
 
 # Install
-include(CMakePackageConfigHelpers)
-install(TARGETS SDL_PhysFS EXPORT SDL_PhysFSTargets)
-install(FILES include/SDL_PhysFS.h DESTINATION include)
-install(EXPORT SDL_PhysFSTargets
-    FILE SDL_PhysFSConfig.cmake
-    NAMESPACE SDL_PhysFS::
-    DESTINATION lib/cmake/SDL_PhysFS
-)
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
-    COMPATIBILITY SameMajorVersion
-)
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
-    DESTINATION lib/cmake/SDL_PhysFS
-)
+if (SDL_PHYSFS_INSTALL)
+    include(CMakePackageConfigHelpers)
+    install(TARGETS SDL_PhysFS EXPORT SDL_PhysFSTargets)
+    install(FILES include/SDL_PhysFS.h DESTINATION include)
+    install(EXPORT SDL_PhysFSTargets
+        FILE SDL_PhysFSConfig.cmake
+        NAMESPACE SDL_PhysFS::
+        DESTINATION lib/cmake/SDL_PhysFS
+    )
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
+        COMPATIBILITY SameMajorVersion
+    )
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
+        DESTINATION lib/cmake/SDL_PhysFS
+    )
+endif()
 
 # Testing
-if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+if (SDL_PHYSFS_IS_TOP_LEVEL)
     include(CTest)
     enable_testing()
     if (BUILD_TESTING)
