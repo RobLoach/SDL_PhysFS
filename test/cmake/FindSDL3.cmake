@@ -8,9 +8,12 @@ set(SDL_RENDER OFF)
 set(SDL_UNIX_CONSOLE_BUILD ON)
 
 include(FetchContent)
+# OVERRIDE_FIND_PACKAGE makes later find_package(SDL3 CONFIG) calls, like the
+# one in PhysFS's CMakeLists.txt, use this fetched SDL3 (CMake 3.24+).
 FetchContent_Declare(
-    SDL3Source
+    SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
     GIT_TAG release-3.4.18
+    OVERRIDE_FIND_PACKAGE
 )
-FetchContent_MakeAvailable(SDL3Source)
+FetchContent_MakeAvailable(SDL3)
