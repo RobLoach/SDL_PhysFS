@@ -1109,6 +1109,8 @@ char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
 
 /**
  * State shared between SDL_PhysFS_EnumerateDirectory() and its PhysFS callback.
+ *
+ * @internal
  */
 typedef struct SDL_PhysFS_EnumerateData {
     SDL_EnumerateDirectoryCallback callback;
@@ -1116,7 +1118,12 @@ typedef struct SDL_PhysFS_EnumerateData {
     const char* dirname;
     bool failed;
 } SDL_PhysFS_EnumerateData;
-
+/**
+ * The callback that will be used for SDL_PhysFS directory enumeration.
+ *
+ * @internal
+ */
+static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
 static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
     (void)origdir;
     SDL_PhysFS_EnumerateData* enumData = (SDL_PhysFS_EnumerateData*)data;
