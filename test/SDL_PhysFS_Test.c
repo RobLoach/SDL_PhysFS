@@ -11,6 +11,45 @@ static SDL_EnumerationResult SDLCALL enumerateCounter(void* userdata, const char
     return SDL_ENUM_CONTINUE;
 }
 
+// Checks that dirname ends in a slash, and that dirname + fname opens.
+static SDL_EnumerationResult SDLCALL enumerateOpen(void* userdata, const char* dirname, const char* fname) {
+    const size_t length = SDL_strlen(dirname);
+    SDL_assert(length > 0 && dirname[length - 1] == '/');
+
+    char* full = NULL;
+    SDL_assert(SDL_asprintf(&full, "%s%s", dirname, fname) > 0);
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(full);
+    SDL_assert(io != NULL);
+    SDL_CloseIO(io);
+    SDL_free(full);
+
+    (*(int*)userdata)++;
+    return SDL_ENUM_CONTINUE;
+}
+
+// Checks that enumerating the root gives an empty dirname.
+static SDL_EnumerationResult SDLCALL enumerateRoot(void* userdata, const char* dirname, const char* fname) {
+    (void)fname;
+    SDL_assert(SDL_strcmp(dirname, "") == 0);
+    (*(int*)userdata)++;
+    return SDL_ENUM_CONTINUE;
+}
+
+static SDL_EnumerationResult SDLCALL enumerateStop(void* userdata, const char* dirname, const char* fname) {
+    (void)dirname;
+    (void)fname;
+    (*(int*)userdata)++;
+    return SDL_ENUM_SUCCESS;
+}
+
+static SDL_EnumerationResult SDLCALL enumerateFail(void* userdata, const char* dirname, const char* fname) {
+    (void)dirname;
+    (void)fname;
+    (*(int*)userdata)++;
+    SDL_SetError("enumerateFail");
+    return SDL_ENUM_FAILURE;
+}
+
 // Looks for a name in a NULL-terminated list of filenames.
 static bool listContains(char** files, const char* name) {
     for (char** file = files; *file != NULL; file++) {
@@ -542,6 +581,39 @@ int main(int argc, char* argv[]) {
         int count = 0;
         SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateCounter, &count));
         SDL_assert(count == resourceCount);
+
+        // dirname ends in a slash, so dirname + fname is a usable path,
+        // whether or not the caller passed a trailing slash.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateOpen, &count));
+        SDL_assert(count == resourceCount);
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res/", enumerateOpen, &count));
+        SDL_assert(count == resourceCount);
+
+        // The root gives an empty dirname, so names stay relative.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("", enumerateRoot, &count));
+        SDL_assert(count >= 1);
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("/", enumerateRoot, &count));
+        SDL_assert(count >= 1);
+
+        // SDL_ENUM_SUCCESS stops early and succeeds.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateStop, &count) == true);
+        SDL_assert(count == 1);
+
+        // SDL_ENUM_FAILURE stops early, fails, and keeps the callback's error.
+        count = 0;
+        SDL_ClearError();
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateFail, &count) == false);
+        SDL_assert(count == 1);
+        SDL_assert(SDL_strcmp(SDL_GetError(), "enumerateFail") == 0);
+
+        // NULL arguments are rejected.
+        SDL_assert(SDL_PhysFS_EnumerateDirectory(NULL, enumerateCounter, &count) == false);
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", NULL, &count) == false);
     }
 
     // SDL_PhysFS_IOStatus

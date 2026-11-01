@@ -1147,45 +1147,98 @@ char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
 }
 
 /**
+ * State shared between SDL_PhysFS_EnumerateDirectory() and its PhysFS callback.
+ *
+ * @internal
+ */
+typedef struct SDL_PhysFS_EnumerateData {
+    SDL_EnumerateDirectoryCallback callback;
+    void* userdata;
+    const char* dirname;
+    bool failed;
+} SDL_PhysFS_EnumerateData;
+
+/**
+ * The callback that will be used for SDL_PhysFS directory enumeration.
+ *
+ * @internal
+ */
+static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
+    (void)origdir;
+    SDL_PhysFS_EnumerateData* enumData = (SDL_PhysFS_EnumerateData*)data;
+    switch (enumData->callback(enumData->userdata, enumData->dirname, fname)) {
+        case SDL_ENUM_SUCCESS:
+            return PHYSFS_ENUM_STOP;
+        case SDL_ENUM_FAILURE:
+            enumData->failed = true;
+            return PHYSFS_ENUM_ERROR;
+        default:
+            return PHYSFS_ENUM_OK;
+    }
+}
+
+/**
  * Enumerate a directory in PhysFS through a callback function.
  *
  * The callback is called once for each entry in the directory, until all
  * entries have been provided or the callback returns SDL_ENUM_SUCCESS or
  * SDL_ENUM_FAILURE.
  *
+ * As with SDL_EnumerateDirectory(), the `dirname` passed to the callback
+ * always ends with a `/`, so `dirname` followed by `fname` is the full path of
+ * the entry. When enumerating the root ("" or "/"), `dirname` is "" so paths
+ * stay relative.
+ *
  * @param path The path of the directory to enumerate.
  * @param callback A function that is called for each entry in the directory.
  * @param userdata A pointer that is passed to the callback.
  *
- * @return true on success, or false if there was a problem or the callback
- *         returned SDL_ENUM_FAILURE. Use SDL_GetError() for details.
+ * @return true on success or if the callback returned SDL_ENUM_SUCCESS, or
+ *         false if there was a problem or the callback returned
+ *         SDL_ENUM_FAILURE. Use SDL_GetError() for details.
  *
  * @see SDL_PhysFS_LoadDirectoryFiles()
  */
 bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void *userdata) {
+    if (path == NULL) {
+        return SDL_InvalidParamError("path");
+    }
     if (callback == NULL) {
         return SDL_InvalidParamError("callback");
     }
 
-    char** directoryFiles = SDL_PhysFS_LoadDirectoryFiles(path);
-    if (!directoryFiles) {
-        SDL_PhysFS_SetError("Failed to enumerate directory");
+    // Give the callback a dirname with a trailing slash, as SDL does.
+    char* dirname = NULL;
+    const size_t length = SDL_strlen(path);
+    if (length == 0 || SDL_strcmp(path, "/") == 0) {
+        dirname = SDL_strdup("");
+    } else if (path[length - 1] == '/') {
+        dirname = SDL_strdup(path);
+    } else if (SDL_asprintf(&dirname, "%s/", path) < 0) {
+        dirname = NULL;
+    }
+    if (dirname == NULL) {
         return false;
     }
 
+    SDL_PhysFS_EnumerateData data;
+    data.callback = callback;
+    data.userdata = userdata;
+    data.dirname = dirname;
+    data.failed = false;
+
     bool result = true;
-    for (char** file = directoryFiles; *file != NULL; file++) {
-        SDL_EnumerationResult enumResult = callback(userdata, path, *file);
-        if (enumResult == SDL_ENUM_FAILURE) {
-            result = false;
-            break;
+    if (PHYSFS_enumerate(path, SDL_PhysFS_EnumerateCallback, &data) == 0) {
+        if (data.failed) {
+            // Keep the callback's own error, and clear PHYSFS_ERR_APP_CALLBACK.
+            PHYSFS_getLastErrorCode();
+        } else {
+            SDL_PhysFS_SetError("Failed to enumerate directory");
         }
-        if (enumResult == SDL_ENUM_SUCCESS) {
-            break;
-        }
+        result = false;
     }
 
-    SDL_PhysFS_FreeDirectoryFiles(directoryFiles);
+    SDL_free(dirname);
     return result;
 }
 
