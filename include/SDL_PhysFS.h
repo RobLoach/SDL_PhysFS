@@ -1118,6 +1118,7 @@ typedef struct SDL_PhysFS_EnumerateData {
     const char* dirname;
     bool failed;
 } SDL_PhysFS_EnumerateData;
+
 /**
  * The callback that will be used for SDL_PhysFS directory enumeration.
  *
