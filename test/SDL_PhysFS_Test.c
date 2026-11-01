@@ -32,6 +32,14 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_Init(argv[0]));
     SDL_assert(SDL_PhysFS_Quit());
 
+    // SDL_PhysFS_InitEx keeps SDL's own error when the pref path fails,
+    // rather than appending an unrelated PhysFS error to it.
+    SDL_ClearError();
+    SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", NULL) == false);
+    SDL_assert(SDL_strstr(SDL_GetError(), "app") != NULL);
+    SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
+    SDL_assert(SDL_strstr(SDL_GetError(), "SDL_PhysFS.h") == NULL);
+
     // SDL_PhysFS_InitEx
     SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));
 
@@ -56,6 +64,14 @@ int main(int argc, char* argv[]) {
         SDL_assert(bmp->h == 239);
         SDL_DestroySurface(bmp);
     }
+
+#if !SDL_VERSION_ATLEAST(3, 6, 0)
+    // SDL_PhysFS_LoadJPG reports the SDL version it needs, without a PhysFS
+    // error appended to it.
+    SDL_assert(SDL_PhysFS_LoadJPG("res/test.bmp") == NULL);
+    SDL_assert(SDL_strstr(SDL_GetError(), "requires SDL 3.6.0") != NULL);
+    SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
+#endif
 
     // SDL_PhysFS_LoadFile
     {
@@ -151,8 +167,16 @@ int main(int argc, char* argv[]) {
         // Seeking before the start of the file fails, whichever whence asks
         // for it, and leaves the position where it was.
         SDL_assert(SDL_SeekIO(io, -1, SDL_IO_SEEK_SET) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "seek past start of file") != NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
         SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_CUR) == -1);
         SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_TellIO(io) == 5);
+
+        // An invalid whence is reported as an invalid parameter.
+        SDL_assert(SDL_SeekIO(io, 0, (SDL_IOWhence)42) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "whence") != NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
         SDL_assert(SDL_TellIO(io) == 5);
 
         SDL_CloseIO(io);
@@ -281,7 +305,9 @@ int main(int argc, char* argv[]) {
 
         // NULL paths are rejected rather than passed through.
         SDL_assert(SDL_PhysFS_CreateDirectory(NULL) == false);
+        SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
         SDL_assert(SDL_PhysFS_RemovePath(NULL) == false);
+        SDL_assert(SDL_strstr(SDL_GetError(), "(no error)") == NULL);
     }
 
     // SDL_PhysFS_Exists
