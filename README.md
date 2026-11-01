@@ -112,10 +112,6 @@ TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
 ```
 
-`SDL_PhysFS_OpenIO()` takes a `PHYSFS_File*`, so it is only declared when `physfs.h` is included before `SDL_PhysFS.h`.
-
-The buffer returned by `SDL_PhysFS_LoadFile()` is allocated with `SDL_malloc()`, and must be freed with `SDL_free()`.
-
 ### Mounting from memory
 
 `SDL_PhysFS_MountFromMemory()` does not copy the buffer it is given. PhysFS reads straight out of it while the archive is mounted, so keep the buffer alive until after `SDL_PhysFS_Unmount()` and free it yourself:
