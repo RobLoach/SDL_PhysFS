@@ -1125,7 +1125,6 @@ typedef struct SDL_PhysFS_EnumerateData {
  * @internal
  */
 static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
-static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
     (void)origdir;
     SDL_PhysFS_EnumerateData* enumData = (SDL_PhysFS_EnumerateData*)data;
     switch (enumData->callback(enumData->userdata, enumData->dirname, fname)) {
