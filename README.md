@@ -70,10 +70,23 @@ int SDL_PhysFS_GetVersion(void);
 // Optional Integrations
 SDL_Surface* SDL_PhysFS_LoadSVG(const char* filename);     // SDL 3.6.0+
 int SDL_PhysFS_AddGamepadMappings(const char* filename);
-SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL_image
-Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
-TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
+SDL_Surface* SDL_PhysFS_IMG_Load(const char* filename);    // SDL3_image
+MIX_Audio* SDL_PhysFS_MIX_LoadAudio(MIX_Mixer* mixer, const char* filename, bool predecode); // SDL3_mixer
+TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, float ptsize); // SDL3_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
+```
+
+### Optional Integrations
+
+The integration macros only expand when used, so include the matching header (`SDL3_image/SDL_image.h`, `SDL3_mixer/SDL_mixer.h`, `SDL3_ttf/SDL_ttf.h`, or `SDL_stbimage.h`) before calling them.
+
+`SDL_PhysFS_MIX_LoadAudio()` follows SDL3_mixer's `MIX_LoadAudio_IO()`, so it now takes a `MIX_Mixer*` and a `predecode` flag, and returns a `MIX_Audio*` instead of a `Mix_Music*`. Update existing calls like so:
+
+``` c
+// Before
+Mix_Music* music = SDL_PhysFS_MIX_LoadAudio("music.ogg");
+// After
+MIX_Audio* audio = SDL_PhysFS_MIX_LoadAudio(mixer, "music.ogg", false);
 ```
 
 ### Mounting from memory
