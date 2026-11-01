@@ -284,7 +284,7 @@ bool SDL_PhysFS_InitEx(const char* argv, const char* org, const char* app) {
     // Find the preferences path.
     char* path = SDL_GetPrefPath(org, app);
     if (path == NULL) {
-        SDL_PhysFS_SetError("Failed to find SDL's pref directory");
+        // SDL_GetPrefPath() has already set the error.
         return false;
     }
 
@@ -551,12 +551,12 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
         pos = len + ((PHYSFS_sint64) offset);
     }
     else {
-        SDL_PhysFS_SetError("Invalid 'whence' parameter");
+        SDL_InvalidParamError("whence");
         return -1;
     }
 
     if (pos < 0) {
-        SDL_PhysFS_SetError("Attempt to seek past start of file");
+        SDL_SetError("SDL_PhysFS_SeekIO: Attempt to seek past start of file");
         return -1;
     }
 
@@ -579,11 +579,13 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
  */
 static SDL_IOStatus SDL_PhysFS_IOError(const char* description, int line) {
     const PHYSFS_ErrorCode err = PHYSFS_getLastErrorCode();
-    SDL_SetError("SDL_PhysFS.h:%d: %s (%s)", line, description, PHYSFS_getErrorByCode(err));
     if (err == PHYSFS_ERR_OK) {
+        // PhysFS did not report why, so do not append its "no error" string.
+        SDL_SetError("SDL_PhysFS.h:%d: %s", line, description);
         return SDL_IO_STATUS_ERROR;
     }
 
+    SDL_SetError("SDL_PhysFS.h:%d: %s (%s)", line, description, PHYSFS_getErrorByCode(err));
     return SDL_PhysFS_IOStatus((int)err);
 }
 
@@ -767,7 +769,7 @@ SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename) {
     return SDL_LoadJPG_IO(io, true);
 #else
     (void)filename;
-    SDL_PhysFS_SetError("SDL_PhysFS_LoadJPG requires SDL 3.6.0 or newer");
+    SDL_SetError("SDL_PhysFS_LoadJPG requires SDL 3.6.0 or newer");
     return NULL;
 #endif
 }
@@ -789,7 +791,7 @@ SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename) {
     return SDL_LoadPNG_IO(io, 1);
 #else
     (void)filename;
-    SDL_PhysFS_SetError("SDL_PhysFS_LoadPNG requires SDL 3.4.0 or newer");
+    SDL_SetError("SDL_PhysFS_LoadPNG requires SDL 3.4.0 or newer");
     return NULL;
 #endif
 }
@@ -811,7 +813,7 @@ SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename) {
     return SDL_LoadSurface_IO(io, true);
 #else
     (void)filename;
-    SDL_PhysFS_SetError("SDL_PhysFS_LoadSurface requires SDL 3.4.0 or newer");
+    SDL_SetError("SDL_PhysFS_LoadSurface requires SDL 3.4.0 or newer");
     return NULL;
 #endif
 }
