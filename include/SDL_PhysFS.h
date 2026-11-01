@@ -682,25 +682,47 @@ static bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
 /**
  * SDL_IOStream callback: close.
  *
+ * If PhysFS fails to close the handle, such as when the final flush of a file
+ * open for writing fails, this reports the error and returns false. PhysFS
+ * keeps such a handle in its list of open files, and SDL_CloseIO() frees the
+ * stream regardless, so there is no way left to retry the close. The handle
+ * stays with PhysFS until SDL_PhysFS_Quit() closes it, which only succeeds once
+ * the handle can be flushed.
+ *
  * @internal
  */
 static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
     PHYSFS_File *handle = (PHYSFS_File *)userdata;
 
-    if (handle != NULL) {
-        if (!PHYSFS_close(handle)) {
-            SDL_PhysFS_SetError("Failed to close file");
-            return false;
-        }
-
-        return true;
+    if (handle == NULL) {
+        return false;
     }
 
-    return false;
+    // PHYSFS_close() flushes too, but flushing first reports a failed write of
+    // buffered data as such, rather than as a failed close.
+    if (!PHYSFS_flush(handle)) {
+        (void)SDL_PhysFS_IOError("Failed to flush file", __LINE__);
+        return false;
+    }
+
+    if (!PHYSFS_close(handle)) {
+        (void)SDL_PhysFS_IOError("Failed to close file", __LINE__);
+        return false;
+    }
+
+    return true;
 }
 
 /**
  * Creates a SDL_IOStream based on the given PHYSFS_File.
+ *
+ * On success, the stream takes ownership of the handle, and closes it with
+ * SDL_CloseIO(). If closing the handle fails, SDL_CloseIO() returns false, and
+ * the handle stays open in PhysFS until SDL_PhysFS_Quit().
+ *
+ * @param handle The PhysFS file handle to wrap.
+ *
+ * @return The SDL_IOStream*, or NULL on failure. Use SDL_GetError() for details. On failure, the caller keeps ownership of the handle, and must close it with PHYSFS_close().
  */
 SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
     if (handle == NULL) {
@@ -733,7 +755,14 @@ SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename) {
         return NULL;
     }
 
-    return SDL_PhysFS_OpenIO(handle);
+    SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+    if (io == NULL) {
+        // The handle is still ours when the stream could not be created.
+        PHYSFS_close(handle);
+        return NULL;
+    }
+
+    return io;
 }
 
 /**
@@ -964,6 +993,10 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
  * @param buffer The data to write. May be NULL only when size is 0.
  * @param size The number of bytes to write. 0 writes an empty file.
  *
+ * If the file cannot be closed, such as when its final flush fails, the write
+ * has failed, and 0 is returned. PhysFS then keeps the file open until
+ * SDL_PhysFS_Quit().
+ *
  * @return The number of bytes written, or 0 on failure. Use SDL_GetError() for details.
  *
  * @see SDL_PhysFS_LoadFile()
@@ -1003,7 +1036,13 @@ size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
         return 0;
     }
 
-    PHYSFS_close(handle);
+    // Closing flushes the data out, so the write has only succeeded once the
+    // handle is closed.
+    if (!PHYSFS_close(handle)) {
+        SDL_PhysFS_SetError("Failed to close file");
+        return 0;
+    }
+
     return (size_t)bytesWritten;
 }
 
