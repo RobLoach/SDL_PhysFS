@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.16)
 project(SDL_PhysFS
     DESCRIPTION "SDL_PhysFS: Load SDL assets through PhysFS."
     HOMEPAGE_URL "https://github.com/RobLoach/SDL_PhysFS"
@@ -17,29 +17,39 @@ endif()
 option(SDL_PHYSFS_INSTALL "Install SDL_PhysFS" ${SDL_PHYSFS_IS_TOP_LEVEL})
 
 # SDL_PhysFS
+include(GNUInstallDirs)
 add_library(SDL_PhysFS INTERFACE)
+add_library(SDL_PhysFS::SDL_PhysFS ALIAS SDL_PhysFS)
 target_include_directories(SDL_PhysFS INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 # Install
 if (SDL_PHYSFS_INSTALL)
     include(CMakePackageConfigHelpers)
+    set(SDL_PHYSFS_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/SDL_PhysFS")
     install(TARGETS SDL_PhysFS EXPORT SDL_PhysFSTargets)
-    install(FILES include/SDL_PhysFS.h DESTINATION include)
+    install(FILES include/SDL_PhysFS.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     install(EXPORT SDL_PhysFSTargets
-        FILE SDL_PhysFSConfig.cmake
+        FILE SDL_PhysFSTargets.cmake
         NAMESPACE SDL_PhysFS::
-        DESTINATION lib/cmake/SDL_PhysFS
+        DESTINATION "${SDL_PHYSFS_CMAKE_DIR}"
+    )
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SDL_PhysFSConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfig.cmake"
+        INSTALL_DESTINATION "${SDL_PHYSFS_CMAKE_DIR}"
     )
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
         COMPATIBILITY SameMajorVersion
+        ARCH_INDEPENDENT
     )
     install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/SDL_PhysFSConfigVersion.cmake"
-        DESTINATION lib/cmake/SDL_PhysFS
+        DESTINATION "${SDL_PHYSFS_CMAKE_DIR}"
     )
 endif()
 

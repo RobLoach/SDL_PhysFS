@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+# SDL_PhysFS is header-only and does not link SDL3 or PhysFS itself, so the
+# consumer links those. Look for SDL3 as a convenience, but never fail here.
+if (NOT TARGET SDL3::SDL3)
+    find_package(SDL3 QUIET CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/SDL_PhysFSTargets.cmake")
+
+check_required_components(SDL_PhysFS)

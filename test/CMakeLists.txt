@@ -53,7 +53,7 @@ foreach(target
     target_link_libraries(${target} PRIVATE
         SDL3::SDL3-static
         physfs-static
-        SDL_PhysFS
+        SDL_PhysFS::SDL_PhysFS
     )
     add_test(NAME ${target} COMMAND ${target})
 endforeach()
