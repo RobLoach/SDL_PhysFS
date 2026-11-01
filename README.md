@@ -17,8 +17,6 @@
 #include "SDL_PhysFS.h"
 
 int main(int argc, char* argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
-
     // Initialize PhysFS
     SDL_PhysFS_Init(argv[0]);
 
@@ -29,12 +27,50 @@ int main(int argc, char* argv[]) {
     SDL_Surface* dog = SDL_PhysFS_LoadBMP("assets/dog.bmp");
 
     // Clean up
+    SDL_DestroySurface(dog);
     SDL_PhysFS_Quit();
     SDL_Quit();
 
     return 0;
 }
 ```
+
+## Usage with CMake
+
+`SDL_PhysFS` is a header-only `INTERFACE` library. Pull it in with `add_subdirectory()` or [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html) and link the `SDL_PhysFS` target:
+
+``` cmake
+include(FetchContent)
+FetchContent_Declare(
+    SDL_PhysFS
+    GIT_REPOSITORY https://github.com/RobLoach/SDL_PhysFS.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(SDL_PhysFS)
+# Or: add_subdirectory(path/to/SDL_PhysFS)
+
+target_link_libraries(my_game PRIVATE SDL_PhysFS SDL3::SDL3 PhysFS::PhysFS)
+```
+
+The `SDL_PhysFS` target only adds the `include` directory. It does not find or link SDL3 or PhysFS, so your project must provide both itself, for example with `find_package(SDL3)` and PhysFS's `PhysFS::PhysFS` target, and make sure `physfs.h` is on the include path.
+
+When SDL_PhysFS is installed (`cmake --install`), it can be found with `find_package()` instead, which provides the `SDL_PhysFS::SDL_PhysFS` target. That package config does not pull in SDL3 or PhysFS either:
+
+``` cmake
+find_package(SDL_PhysFS REQUIRED)
+target_link_libraries(my_game PRIVATE SDL_PhysFS::SDL_PhysFS SDL3::SDL3 PhysFS::PhysFS)
+```
+
+## Configuration
+
+Define these before including `SDL_PhysFS.h`:
+
+| Macro | Description |
+| --- | --- |
+| `SDL_PHYSFS_IMPLEMENTATION` | Define in exactly one source file to compile the implementation there. Every other file includes the header on its own to get just the declarations. Including the header again with it defined in the same file is safe. |
+| `SDL_PHYSFS_STATIC` | Declares every function `static`, keeping the whole API private to the single file that defines `SDL_PHYSFS_IMPLEMENTATION`. |
+| `SDL_PHYSFS_DEF` | Overrides the storage specifier used on every declaration. Defaults to `extern`, or `static` with `SDL_PHYSFS_STATIC`. |
+| `SDL_PHYSFS_PHYSFS_H` | The header the implementation includes for PhysFS. Defaults to `"physfs.h"`, for example `#define SDL_PHYSFS_PHYSFS_H <physfs/physfs.h>`. |
 
 ### API
 
@@ -47,13 +83,13 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
 bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio);
 bool SDL_PhysFS_Unmount(const char* oldDir);
 SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename);
-SDL_IOStream* SDL_PhysFS_OpenIO(PHYSFS_File* handle);
+SDL_IOStream* SDL_PhysFS_OpenIO(PHYSFS_File* handle);  // Only when physfs.h is included before SDL_PhysFS.h
 SDL_Surface* SDL_PhysFS_LoadBMP(const char* filename);
 SDL_Surface* SDL_PhysFS_LoadJPG(const char* filename);    // SDL 3.6.0+
 SDL_Surface* SDL_PhysFS_LoadPNG(const char* filename);    // SDL 3.4.0+
 SDL_Surface* SDL_PhysFS_LoadSurface(const char* filename); // SDL 3.4.0+
 bool SDL_PhysFS_LoadWAV(const char* filename, SDL_AudioSpec* spec, Uint8** audio_buf, Uint32* audio_len);
-void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize);
+void* SDL_PhysFS_LoadFile(const char* filename, size_t* datasize); // Free with SDL_free()
 size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size);
 bool SDL_PhysFS_SetWriteDir(const char* path);
 const char* SDL_PhysFS_GetWriteDir(void);
@@ -75,6 +111,10 @@ Mix_Music* SDL_PhysFS_MIX_LoadAudio(const char* filename); // SDL_mixer
 TTF_Font* SDL_PhysFS_TTF_OpenFont(const char* filename, int ptsize); // SDL_ttf
 SDL_Surface* SDL_PhysFS_STBIMG_Load(const char* filename); // SDL_stbimage.h
 ```
+
+`SDL_PhysFS_OpenIO()` takes a `PHYSFS_File*`, so it is only declared when `physfs.h` is included before `SDL_PhysFS.h`.
+
+The buffer returned by `SDL_PhysFS_LoadFile()` is allocated with `SDL_malloc()`, and must be freed with `SDL_free()`.
 
 ### Mounting from memory
 
