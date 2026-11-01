@@ -202,9 +202,7 @@ static void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
         return NULL;
     }
 
-    SDL_malloc_func malloc_func;
-    SDL_GetMemoryFunctions(&malloc_func, NULL, NULL, NULL);
-    return malloc_func((size_t)size);
+    return SDL_malloc((size_t)size);
 }
 
 /**
@@ -218,9 +216,7 @@ static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
         return NULL;
     }
 
-    SDL_realloc_func realloc_func;
-    SDL_GetMemoryFunctions(NULL, NULL, &realloc_func, NULL);
-    return realloc_func(mem, (size_t)size);
+    return SDL_realloc(mem, (size_t)size);
 }
 
 /**
@@ -229,9 +225,7 @@ static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
  * @internal
  */
 static void SDL_PhysFS_AllocatorFree(void* mem) {
-    SDL_free_func free_func;
-    SDL_GetMemoryFunctions(NULL, NULL, NULL, &free_func);
-    return free_func(mem);
+    SDL_free(mem);
 }
 
 /**
@@ -530,7 +524,7 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
     }
     else if (whence == SDL_IO_SEEK_CUR) {
         const PHYSFS_sint64 current = PHYSFS_tell(handle);
-        if (current == -1) {
+        if (current < 0) {
             SDL_PhysFS_SetError("Cannot find position in file");
             return -1;
         }
@@ -539,12 +533,24 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
             return (Sint64) current;
         }
 
+        // current is non-negative, so only a positive offset can overflow.
+        if (offset > 0 && current > SDL_MAX_SINT64 - offset) {
+            SDL_SetError("SDL_PhysFS_SeekIO: Seek offset out of range");
+            return -1;
+        }
+
         pos = current + ((PHYSFS_sint64) offset);
     }
     else if (whence == SDL_IO_SEEK_END) {
         const PHYSFS_sint64 len = PHYSFS_fileLength(handle);
-        if (len == -1) {
+        if (len < 0) {
             SDL_PhysFS_SetError("Cannot find end of file");
+            return -1;
+        }
+
+        // len is non-negative, so only a positive offset can overflow.
+        if (offset > 0 && len > SDL_MAX_SINT64 - offset) {
+            SDL_SetError("SDL_PhysFS_SeekIO: Seek offset out of range");
             return -1;
         }
 

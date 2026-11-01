@@ -371,6 +371,16 @@ int main(int argc, char* argv[]) {
         SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_END) == -1);
         SDL_assert(SDL_TellIO(io) == 5);
 
+        // Offsets that would overflow a signed 64-bit position fail cleanly,
+        // and leave the position where it was.
+        SDL_assert(SDL_SeekIO(io, SDL_MAX_SINT64, SDL_IO_SEEK_CUR) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "out of range") != NULL);
+        SDL_assert(SDL_SeekIO(io, SDL_MAX_SINT64, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "out of range") != NULL);
+        SDL_assert(SDL_SeekIO(io, SDL_MIN_SINT64, SDL_IO_SEEK_CUR) == -1);
+        SDL_assert(SDL_SeekIO(io, SDL_MIN_SINT64, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_TellIO(io) == 5);
+
         // An invalid whence is reported as an invalid parameter.
         SDL_assert(SDL_SeekIO(io, 0, (SDL_IOWhence)42) == -1);
         SDL_assert(SDL_strstr(SDL_GetError(), "whence") != NULL);
