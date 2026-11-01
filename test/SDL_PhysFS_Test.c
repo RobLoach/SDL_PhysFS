@@ -11,6 +11,45 @@ static SDL_EnumerationResult SDLCALL enumerateCounter(void* userdata, const char
     return SDL_ENUM_CONTINUE;
 }
 
+// Checks that dirname ends in a slash, and that dirname + fname opens.
+static SDL_EnumerationResult SDLCALL enumerateOpen(void* userdata, const char* dirname, const char* fname) {
+    const size_t length = SDL_strlen(dirname);
+    SDL_assert(length > 0 && dirname[length - 1] == '/');
+
+    char* full = NULL;
+    SDL_assert(SDL_asprintf(&full, "%s%s", dirname, fname) > 0);
+    SDL_IOStream* io = SDL_PhysFS_IOFromFile(full);
+    SDL_assert(io != NULL);
+    SDL_CloseIO(io);
+    SDL_free(full);
+
+    (*(int*)userdata)++;
+    return SDL_ENUM_CONTINUE;
+}
+
+// Checks that enumerating the root gives an empty dirname.
+static SDL_EnumerationResult SDLCALL enumerateRoot(void* userdata, const char* dirname, const char* fname) {
+    (void)fname;
+    SDL_assert(SDL_strcmp(dirname, "") == 0);
+    (*(int*)userdata)++;
+    return SDL_ENUM_CONTINUE;
+}
+
+static SDL_EnumerationResult SDLCALL enumerateStop(void* userdata, const char* dirname, const char* fname) {
+    (void)dirname;
+    (void)fname;
+    (*(int*)userdata)++;
+    return SDL_ENUM_SUCCESS;
+}
+
+static SDL_EnumerationResult SDLCALL enumerateFail(void* userdata, const char* dirname, const char* fname) {
+    (void)dirname;
+    (void)fname;
+    (*(int*)userdata)++;
+    SDL_SetError("enumerateFail");
+    return SDL_ENUM_FAILURE;
+}
+
 // Looks for a name in a NULL-terminated list of filenames.
 static bool listContains(char** files, const char* name) {
     for (char** file = files; *file != NULL; file++) {
@@ -21,6 +60,165 @@ static bool listContains(char** files, const char* name) {
 
     return false;
 }
+
+// A calloc() that counts its calls, and fails the one numbered failCallocAt,
+// used to make SDL_OpenIO() fail, as it allocates its stream with SDL_calloc().
+static SDL_calloc_func originalCalloc;
+static int callocCount = 0;
+static int failCallocAt = 0;
+
+static void* SDLCALL failingCalloc(size_t nmemb, size_t size) {
+    if (++callocCount == failCallocAt) {
+        return NULL;
+    }
+
+    return originalCalloc(nmemb, size);
+}
+
+// A PhysFS archiver for the write directory whose files fail to write or flush
+// on demand, as forcing a real disk to do so is not practical. The flags can be
+// cleared again afterwards, so that SDL_PhysFS_Quit() can close the files.
+#define FAILING_EXTENSION "sdlphysfsfailing"
+static bool failingWrite = false;
+static bool failingFlush = false;
+
+static PHYSFS_sint64 failingIoRead(PHYSFS_Io* io, void* buf, PHYSFS_uint64 len) {
+    (void)io;
+    (void)buf;
+    (void)len;
+    PHYSFS_setErrorCode(PHYSFS_ERR_OPEN_FOR_WRITING);
+    return -1;
+}
+
+static PHYSFS_sint64 failingIoWrite(PHYSFS_Io* io, const void* buffer, PHYSFS_uint64 len) {
+    (void)io;
+    (void)buffer;
+    if (failingWrite) {
+        PHYSFS_setErrorCode(PHYSFS_ERR_IO);
+        return -1;
+    }
+
+    return (PHYSFS_sint64)len;
+}
+
+static int failingIoSeek(PHYSFS_Io* io, PHYSFS_uint64 offset) {
+    (void)io;
+    (void)offset;
+    return 1;
+}
+
+static PHYSFS_sint64 failingIoTell(PHYSFS_Io* io) {
+    (void)io;
+    return 0;
+}
+
+static PHYSFS_sint64 failingIoLength(PHYSFS_Io* io) {
+    (void)io;
+    return 0;
+}
+
+static PHYSFS_Io* failingIoDuplicate(PHYSFS_Io* io) {
+    (void)io;
+    PHYSFS_setErrorCode(PHYSFS_ERR_UNSUPPORTED);
+    return NULL;
+}
+
+static int failingIoFlush(PHYSFS_Io* io) {
+    (void)io;
+    if (failingFlush) {
+        PHYSFS_setErrorCode(PHYSFS_ERR_IO);
+        return 0;
+    }
+
+    return 1;
+}
+
+static void failingIoDestroy(PHYSFS_Io* io) {
+    SDL_free(io);
+}
+
+static void* failingOpenArchive(PHYSFS_Io* io, const char* name, int forWrite, int* claimed) {
+    // Only claim the write directory made for this archiver, and leave
+    // everything else to the real archivers.
+    const char* ext = SDL_strrchr(name, '.');
+    if (!forWrite || ext == NULL || SDL_strcmp(ext + 1, FAILING_EXTENSION) != 0) {
+        return NULL;
+    }
+
+    *claimed = 1;
+    return io;
+}
+
+static PHYSFS_EnumerateCallbackResult failingEnumerate(void* opaque, const char* dirname, PHYSFS_EnumerateCallback cb, const char* origdir, void* callbackdata) {
+    (void)opaque;
+    (void)dirname;
+    (void)cb;
+    (void)origdir;
+    (void)callbackdata;
+    return PHYSFS_ENUM_OK;
+}
+
+static PHYSFS_Io* failingOpenRead(void* opaque, const char* fnm) {
+    (void)opaque;
+    (void)fnm;
+    PHYSFS_setErrorCode(PHYSFS_ERR_NOT_FOUND);
+    return NULL;
+}
+
+static PHYSFS_Io* failingOpenWrite(void* opaque, const char* filename) {
+    (void)opaque;
+    (void)filename;
+    PHYSFS_Io* io = (PHYSFS_Io*)SDL_calloc(1, sizeof(PHYSFS_Io));
+    if (io == NULL) {
+        PHYSFS_setErrorCode(PHYSFS_ERR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
+    io->read = failingIoRead;
+    io->write = failingIoWrite;
+    io->seek = failingIoSeek;
+    io->tell = failingIoTell;
+    io->length = failingIoLength;
+    io->duplicate = failingIoDuplicate;
+    io->flush = failingIoFlush;
+    io->destroy = failingIoDestroy;
+    return io;
+}
+
+static int failingRemove(void* opaque, const char* filename) {
+    (void)opaque;
+    (void)filename;
+    PHYSFS_setErrorCode(PHYSFS_ERR_UNSUPPORTED);
+    return 0;
+}
+
+static int failingStat(void* opaque, const char* fn, PHYSFS_Stat* stat) {
+    (void)opaque;
+    (void)fn;
+    (void)stat;
+    PHYSFS_setErrorCode(PHYSFS_ERR_NOT_FOUND);
+    return 0;
+}
+
+static void failingCloseArchive(void* opaque) {
+    // The archive owns the PhysFS_Io of the file it was opened on.
+    PHYSFS_Io* io = (PHYSFS_Io*)opaque;
+    io->destroy(io);
+}
+
+static const PHYSFS_Archiver failingArchiver = {
+    0,
+    { FAILING_EXTENSION, "Fails to write on demand", "SDL_PhysFS", "https://github.com/RobLoach/SDL_PhysFS", 0 },
+    failingOpenArchive,
+    failingEnumerate,
+    failingOpenRead,
+    failingOpenWrite,
+    failingOpenWrite,
+    failingRemove,
+    failingRemove,
+    failingStat,
+    failingCloseArchive,
+};
 
 int main(int argc, char* argv[]) {
     (void)argc;
@@ -173,6 +371,16 @@ int main(int argc, char* argv[]) {
         SDL_assert(SDL_SeekIO(io, -100, SDL_IO_SEEK_END) == -1);
         SDL_assert(SDL_TellIO(io) == 5);
 
+        // Offsets that would overflow a signed 64-bit position fail cleanly,
+        // and leave the position where it was.
+        SDL_assert(SDL_SeekIO(io, SDL_MAX_SINT64, SDL_IO_SEEK_CUR) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "out of range") != NULL);
+        SDL_assert(SDL_SeekIO(io, SDL_MAX_SINT64, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_strstr(SDL_GetError(), "out of range") != NULL);
+        SDL_assert(SDL_SeekIO(io, SDL_MIN_SINT64, SDL_IO_SEEK_CUR) == -1);
+        SDL_assert(SDL_SeekIO(io, SDL_MIN_SINT64, SDL_IO_SEEK_END) == -1);
+        SDL_assert(SDL_TellIO(io) == 5);
+
         // An invalid whence is reported as an invalid parameter.
         SDL_assert(SDL_SeekIO(io, 0, (SDL_IOWhence)42) == -1);
         SDL_assert(SDL_strstr(SDL_GetError(), "whence") != NULL);
@@ -196,8 +404,7 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
-    // A short read that reaches the end of the file is not an error, and the
-    // following read reports SDL_IO_STATUS_EOF.
+    // A short read at the end of the file is not an error.
     {
         SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
         SDL_assert(io != NULL);
@@ -209,8 +416,7 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
-    // Reading from a stream opened for writing fails with an SDL error, even
-    // though SDL_ReadIO() clears the error before calling the callback.
+    // Reading a write-only stream sets an SDL error.
     {
         PHYSFS_File* handle = PHYSFS_openWrite("readfail.txt");
         SDL_assert(handle != NULL);
@@ -225,9 +431,7 @@ int main(int argc, char* argv[]) {
         SDL_assert(SDL_PhysFS_RemovePath("readfail.txt"));
     }
 
-    // The SDL_IOStream callbacks report an SDL error and a non-ready status
-    // when given a NULL handle. SDL_PhysFS_OpenIO() refuses a NULL handle, so
-    // call them directly, clearing the error first as SDL itself does.
+    // IO callbacks set an error when given a NULL handle.
     {
         char buffer[4];
         SDL_IOStatus status;
@@ -252,8 +456,6 @@ int main(int argc, char* argv[]) {
         SDL_assert(status == SDL_IO_STATUS_ERROR);
         SDL_assert(SDL_GetError()[0] != '\0');
 
-        // PHYSFS_flush() only fails when writing out its buffer fails, after
-        // which the handle can never be closed, so test the NULL handle.
         SDL_ClearError();
         status = SDL_IO_STATUS_READY;
         SDL_assert(SDL_PhysFS_FlushIO(NULL, &status) == false);
@@ -452,6 +654,39 @@ int main(int argc, char* argv[]) {
         int count = 0;
         SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateCounter, &count));
         SDL_assert(count == resourceCount);
+
+        // dirname ends in a slash, so dirname + fname is a usable path,
+        // whether or not the caller passed a trailing slash.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateOpen, &count));
+        SDL_assert(count == resourceCount);
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res/", enumerateOpen, &count));
+        SDL_assert(count == resourceCount);
+
+        // The root gives an empty dirname, so names stay relative.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("", enumerateRoot, &count));
+        SDL_assert(count >= 1);
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("/", enumerateRoot, &count));
+        SDL_assert(count >= 1);
+
+        // SDL_ENUM_SUCCESS stops early and succeeds.
+        count = 0;
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateStop, &count) == true);
+        SDL_assert(count == 1);
+
+        // SDL_ENUM_FAILURE stops early, fails, and keeps the callback's error.
+        count = 0;
+        SDL_ClearError();
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", enumerateFail, &count) == false);
+        SDL_assert(count == 1);
+        SDL_assert(SDL_strcmp(SDL_GetError(), "enumerateFail") == 0);
+
+        // NULL arguments are rejected.
+        SDL_assert(SDL_PhysFS_EnumerateDirectory(NULL, enumerateCounter, &count) == false);
+        SDL_assert(SDL_PhysFS_EnumerateDirectory("res", NULL, &count) == false);
     }
 
     // SDL_PhysFS_IOStatus
@@ -466,11 +701,118 @@ int main(int argc, char* argv[]) {
     SDL_assert(SDL_PhysFS_IOStatus(-1) == SDL_IO_STATUS_ERROR);
     SDL_assert(SDL_PhysFS_IOStatus(PHYSFS_ERR_IO) == SDL_IO_STATUS_ERROR);
 
+    // SDL_PhysFS_IOFromFile closes the PhysFS handle when the stream cannot
+    // be created, rather than leaving it open.
+    {
+        SDL_malloc_func mallocFunc;
+        SDL_realloc_func reallocFunc;
+        SDL_free_func freeFunc;
+        SDL_GetMemoryFunctions(&mallocFunc, &originalCalloc, &reallocFunc, &freeFunc);
+        SDL_assert(SDL_SetMemoryFunctions(mallocFunc, failingCalloc, reallocFunc, freeFunc));
+
+        // PhysFS may open the file through SDL as well, so count the calls a
+        // successful open makes, and fail only the last one, which is the
+        // stream SDL_PhysFS_OpenIO() creates.
+        callocCount = 0;
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_CloseIO(io));
+        SDL_assert(callocCount > 0);
+
+        failCallocAt = callocCount;
+        callocCount = 0;
+        io = SDL_PhysFS_IOFromFile("res/test.txt");
+        failCallocAt = 0;
+        SDL_assert(SDL_SetMemoryFunctions(mallocFunc, originalCalloc, reallocFunc, freeFunc));
+        SDL_assert(io == NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), "Failed to open file") == NULL);
+
+        // PhysFS refuses to unmount an archive with files still open in it, so
+        // this fails if the handle was leaked.
+        SDL_assert(SDL_PhysFS_Unmount("resources"));
+        SDL_assert(SDL_PhysFS_Mount("resources", "res"));
+    }
+
     // SDL_PhysFS_Unmount
     SDL_assert(SDL_PhysFS_Unmount("resources") == true);
 
     // SDL_PhysFS_Quit
     SDL_assert(SDL_PhysFS_Quit() == true);
+
+    // Failures to write, flush and close files are reported, using a write
+    // directory whose files fail on demand.
+    {
+        SDL_assert(SDL_PhysFS_Init(argv[0]));
+        SDL_assert(PHYSFS_registerArchiver(&failingArchiver));
+
+        // PhysFS only hands a path that is not a directory to an archiver, so
+        // the write directory has to be a file.
+        char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
+        SDL_assert(prefPath != NULL);
+        char* writeDir = NULL;
+        SDL_assert(SDL_asprintf(&writeDir, "%swritedir." FAILING_EXTENSION, prefPath) > 0);
+        SDL_free(prefPath);
+        SDL_IOStream* file = SDL_IOFromFile(writeDir, "wb");
+        SDL_assert(file != NULL);
+        SDL_assert(SDL_CloseIO(file));
+        SDL_assert(SDL_PhysFS_SetWriteDir(writeDir));
+
+        // Writing works while nothing fails.
+        SDL_assert(SDL_PhysFS_WriteFile("ok.txt", "data", 4) == 4);
+
+        // A failed write is a failed SDL_PhysFS_WriteFile().
+        failingWrite = true;
+        SDL_assert(SDL_PhysFS_WriteFile("write.txt", "data", 4) == 0);
+        SDL_assert(SDL_strstr(SDL_GetError(), "Failed to write data to file") != NULL);
+        failingWrite = false;
+
+        // A failed close is a failed SDL_PhysFS_WriteFile() too, as the data
+        // may never have reached the file.
+        failingFlush = true;
+        SDL_assert(SDL_PhysFS_WriteFile("close.txt", "data", 4) == 0);
+        SDL_assert(SDL_strstr(SDL_GetError(), "Failed to close file") != NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_IO)) != NULL);
+
+        // SDL_CloseIO() reports a failed close.
+        {
+            PHYSFS_File* handle = PHYSFS_openWrite("stream.txt");
+            SDL_assert(handle != NULL);
+            SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+            SDL_assert(io != NULL);
+            SDL_assert(SDL_WriteIO(io, "data", 4) == 4);
+            SDL_assert(SDL_CloseIO(io) == false);
+            SDL_assert(SDL_strstr(SDL_GetError(), "Failed to close file") != NULL);
+            SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_IO)) != NULL);
+        }
+        failingFlush = false;
+
+        // SDL_CloseIO() reports a failed flush of buffered data.
+        {
+            PHYSFS_File* handle = PHYSFS_openWrite("buffered.txt");
+            SDL_assert(handle != NULL);
+            SDL_assert(PHYSFS_setBuffer(handle, 64));
+            SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+            SDL_assert(io != NULL);
+            SDL_assert(SDL_WriteIO(io, "data", 4) == 4);
+            failingWrite = true;
+            SDL_assert(SDL_CloseIO(io) == false);
+            SDL_assert(SDL_strstr(SDL_GetError(), "Failed to flush file") != NULL);
+            SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_IO)) != NULL);
+            failingWrite = false;
+        }
+
+        // The handles that failed to close stay open in PhysFS, so it cannot
+        // quit while they still fail to flush...
+        failingFlush = true;
+        SDL_assert(SDL_PhysFS_Quit() == false);
+
+        // ...and closes them once they can be.
+        failingFlush = false;
+        SDL_assert(SDL_PhysFS_Quit() == true);
+
+        SDL_assert(SDL_RemovePath(writeDir));
+        SDL_free(writeDir);
+    }
 
     SDL_Quit();
 

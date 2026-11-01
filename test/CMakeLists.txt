@@ -37,6 +37,20 @@ add_executable(SDL_PhysFS_Test_Static
     compile/static.c
 )
 
+# Strict ISO C99, so the header does not lean on compiler extensions.
+add_executable(SDL_PhysFS_Test_C99
+    compile/implementation.c
+    compile/header_only.c
+)
+set_target_properties(SDL_PhysFS_Test_C99 PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    C_EXTENSIONS OFF
+)
+target_compile_options(SDL_PhysFS_Test_C99 PRIVATE
+    $<$<NOT:$<C_COMPILER_ID:MSVC>>:-pedantic-errors>
+)
+
 # In SDL_PHYSFS_STATIC mode the whole API is internal to the one translation
 # unit, so anything this check does not call is legitimately unused.
 target_compile_options(SDL_PhysFS_Test_Static PRIVATE
@@ -48,12 +62,13 @@ foreach(target
     SDL_PhysFS_Test_MultiTU
     SDL_PhysFS_Test_CXX
     SDL_PhysFS_Test_Static
+    SDL_PhysFS_Test_C99
 )
     target_compile_options(${target} PRIVATE ${SDL_PhysFS_TestWarnings})
     target_link_libraries(${target} PRIVATE
         SDL3::SDL3-static
         physfs-static
-        SDL_PhysFS
+        SDL_PhysFS::SDL_PhysFS
     )
     add_test(NAME ${target} COMMAND ${target})
 endforeach()

@@ -202,9 +202,7 @@ static void* SDL_PhysFS_AllocatorMalloc(PHYSFS_uint64 size) {
         return NULL;
     }
 
-    SDL_malloc_func malloc_func;
-    SDL_GetMemoryFunctions(&malloc_func, NULL, NULL, NULL);
-    return malloc_func((size_t)size);
+    return SDL_malloc((size_t)size);
 }
 
 /**
@@ -218,9 +216,7 @@ static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
         return NULL;
     }
 
-    SDL_realloc_func realloc_func;
-    SDL_GetMemoryFunctions(NULL, NULL, &realloc_func, NULL);
-    return realloc_func(mem, (size_t)size);
+    return SDL_realloc(mem, (size_t)size);
 }
 
 /**
@@ -229,9 +225,7 @@ static void* SDL_PhysFS_AllocatorRealloc(void* mem, PHYSFS_uint64 size) {
  * @internal
  */
 static void SDL_PhysFS_AllocatorFree(void* mem) {
-    SDL_free_func free_func;
-    SDL_GetMemoryFunctions(NULL, NULL, NULL, &free_func);
-    return free_func(mem);
+    SDL_free(mem);
 }
 
 /**
@@ -504,13 +498,6 @@ bool SDL_PhysFS_Unmount(const char* oldDir) {
  * reads it only once, and uses it for both the message and the status. As this
  * is only called on failure, it never reports SDL_IO_STATUS_READY.
  *
- * SDL_ReadIO() and friends clear the SDL error before calling the callbacks,
- * so every failing callback must set one.
- *
- * @param description A description of the error that occurred.
- * @param line The line the error occurred on.
- * @param status Where to store the SDL_IOStatus, or NULL.
- *
  * @internal
  */
 static void SDL_PhysFS_IOError(const char* description, int line, SDL_IOStatus* status) {
@@ -584,7 +571,7 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
     }
     else if (whence == SDL_IO_SEEK_CUR) {
         const PHYSFS_sint64 current = PHYSFS_tell(handle);
-        if (current == -1) {
+        if (current < 0) {
             SDL_PhysFS_IOError("Cannot find position in file", __LINE__, NULL);
             return -1;
         }
@@ -593,12 +580,24 @@ static Sint64 SDLCALL SDL_PhysFS_SeekIO(void *userdata, Sint64 offset, SDL_IOWhe
             return (Sint64) current;
         }
 
+        // current is non-negative, so only a positive offset can overflow.
+        if (offset > 0 && current > SDL_MAX_SINT64 - offset) {
+            SDL_SetError("SDL_PhysFS_SeekIO: Seek offset out of range");
+            return -1;
+        }
+
         pos = current + ((PHYSFS_sint64) offset);
     }
     else if (whence == SDL_IO_SEEK_END) {
         const PHYSFS_sint64 len = PHYSFS_fileLength(handle);
-        if (len == -1) {
+        if (len < 0) {
             SDL_PhysFS_IOError("Cannot find end of file", __LINE__, NULL);
+            return -1;
+        }
+
+        // len is non-negative, so only a positive offset can overflow.
+        if (offset > 0 && len > SDL_MAX_SINT64 - offset) {
+            SDL_SetError("SDL_PhysFS_SeekIO: Seek offset out of range");
             return -1;
         }
 
@@ -705,6 +704,13 @@ static bool SDLCALL SDL_PhysFS_FlushIO(void *userdata, SDL_IOStatus *status) {
 /**
  * SDL_IOStream callback: close.
  *
+ * If PhysFS fails to close the handle, such as when the final flush of a file
+ * open for writing fails, this reports the error and returns false. PhysFS
+ * keeps such a handle in its list of open files, and SDL_CloseIO() frees the
+ * stream regardless, so there is no way left to retry the close. The handle
+ * stays with PhysFS until SDL_PhysFS_Quit() closes it, which only succeeds once
+ * the handle can be flushed.
+ *
  * @internal
  */
 static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
@@ -712,6 +718,13 @@ static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
 
     if (handle == NULL) {
         SDL_PhysFS_IOInvalidHandle(NULL);
+        return false;
+    }
+
+    // PHYSFS_close() flushes too, but flushing first reports a failed write of
+    // buffered data as such, rather than as a failed close.
+    if (!PHYSFS_flush(handle)) {
+        SDL_PhysFS_IOError("Failed to flush file", __LINE__, NULL);
         return false;
     }
 
@@ -725,6 +738,14 @@ static bool SDLCALL SDL_PhysFS_CloseIO(void *userdata) {
 
 /**
  * Creates a SDL_IOStream based on the given PHYSFS_File.
+ *
+ * On success, the stream takes ownership of the handle, and closes it with
+ * SDL_CloseIO(). If closing the handle fails, SDL_CloseIO() returns false, and
+ * the handle stays open in PhysFS until SDL_PhysFS_Quit().
+ *
+ * @param handle The PhysFS file handle to wrap.
+ *
+ * @return The SDL_IOStream*, or NULL on failure. Use SDL_GetError() for details. On failure, the caller keeps ownership of the handle, and must close it with PHYSFS_close().
  */
 SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle) {
     if (handle == NULL) {
@@ -757,7 +778,14 @@ SDL_IOStream* SDL_PhysFS_IOFromFile(const char* filename) {
         return NULL;
     }
 
-    return SDL_PhysFS_OpenIO(handle);
+    SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+    if (io == NULL) {
+        // The handle is still ours when the stream could not be created.
+        PHYSFS_close(handle);
+        return NULL;
+    }
+
+    return io;
 }
 
 /**
@@ -988,6 +1016,10 @@ void* SDL_PhysFS_LoadFile(const char* filename, size_t *datasize) {
  * @param buffer The data to write. May be NULL only when size is 0.
  * @param size The number of bytes to write. 0 writes an empty file.
  *
+ * If the file cannot be closed, such as when its final flush fails, the write
+ * has failed, and 0 is returned. PhysFS then keeps the file open until
+ * SDL_PhysFS_Quit().
+ *
  * @return The number of bytes written, or 0 on failure. Use SDL_GetError() for details.
  *
  * @see SDL_PhysFS_LoadFile()
@@ -1027,7 +1059,13 @@ size_t SDL_PhysFS_WriteFile(const char* file, const void* buffer, size_t size) {
         return 0;
     }
 
-    PHYSFS_close(handle);
+    // Closing flushes the data out, so the write has only succeeded once the
+    // handle is closed.
+    if (!PHYSFS_close(handle)) {
+        SDL_PhysFS_SetError("Failed to close file");
+        return 0;
+    }
+
     return (size_t)bytesWritten;
 }
 
@@ -1132,45 +1170,98 @@ char** SDL_PhysFS_LoadDirectoryFiles(const char *directory) {
 }
 
 /**
+ * State shared between SDL_PhysFS_EnumerateDirectory() and its PhysFS callback.
+ *
+ * @internal
+ */
+typedef struct SDL_PhysFS_EnumerateData {
+    SDL_EnumerateDirectoryCallback callback;
+    void* userdata;
+    const char* dirname;
+    bool failed;
+} SDL_PhysFS_EnumerateData;
+
+/**
+ * The callback that will be used for SDL_PhysFS directory enumeration.
+ *
+ * @internal
+ */
+static PHYSFS_EnumerateCallbackResult SDL_PhysFS_EnumerateCallback(void* data, const char* origdir, const char* fname) {
+    (void)origdir;
+    SDL_PhysFS_EnumerateData* enumData = (SDL_PhysFS_EnumerateData*)data;
+    switch (enumData->callback(enumData->userdata, enumData->dirname, fname)) {
+        case SDL_ENUM_SUCCESS:
+            return PHYSFS_ENUM_STOP;
+        case SDL_ENUM_FAILURE:
+            enumData->failed = true;
+            return PHYSFS_ENUM_ERROR;
+        default:
+            return PHYSFS_ENUM_OK;
+    }
+}
+
+/**
  * Enumerate a directory in PhysFS through a callback function.
  *
  * The callback is called once for each entry in the directory, until all
  * entries have been provided or the callback returns SDL_ENUM_SUCCESS or
  * SDL_ENUM_FAILURE.
  *
+ * As with SDL_EnumerateDirectory(), the `dirname` passed to the callback
+ * always ends with a `/`, so `dirname` followed by `fname` is the full path of
+ * the entry. When enumerating the root ("" or "/"), `dirname` is "" so paths
+ * stay relative.
+ *
  * @param path The path of the directory to enumerate.
  * @param callback A function that is called for each entry in the directory.
  * @param userdata A pointer that is passed to the callback.
  *
- * @return true on success, or false if there was a problem or the callback
- *         returned SDL_ENUM_FAILURE. Use SDL_GetError() for details.
+ * @return true on success or if the callback returned SDL_ENUM_SUCCESS, or
+ *         false if there was a problem or the callback returned
+ *         SDL_ENUM_FAILURE. Use SDL_GetError() for details.
  *
  * @see SDL_PhysFS_LoadDirectoryFiles()
  */
 bool SDL_PhysFS_EnumerateDirectory(const char* path, SDL_EnumerateDirectoryCallback callback, void *userdata) {
+    if (path == NULL) {
+        return SDL_InvalidParamError("path");
+    }
     if (callback == NULL) {
         return SDL_InvalidParamError("callback");
     }
 
-    char** directoryFiles = SDL_PhysFS_LoadDirectoryFiles(path);
-    if (!directoryFiles) {
-        SDL_PhysFS_SetError("Failed to enumerate directory");
+    // Give the callback a dirname with a trailing slash, as SDL does.
+    char* dirname = NULL;
+    const size_t length = SDL_strlen(path);
+    if (length == 0 || SDL_strcmp(path, "/") == 0) {
+        dirname = SDL_strdup("");
+    } else if (path[length - 1] == '/') {
+        dirname = SDL_strdup(path);
+    } else if (SDL_asprintf(&dirname, "%s/", path) < 0) {
+        dirname = NULL;
+    }
+    if (dirname == NULL) {
         return false;
     }
 
+    SDL_PhysFS_EnumerateData data;
+    data.callback = callback;
+    data.userdata = userdata;
+    data.dirname = dirname;
+    data.failed = false;
+
     bool result = true;
-    for (char** file = directoryFiles; *file != NULL; file++) {
-        SDL_EnumerationResult enumResult = callback(userdata, path, *file);
-        if (enumResult == SDL_ENUM_FAILURE) {
-            result = false;
-            break;
+    if (PHYSFS_enumerate(path, SDL_PhysFS_EnumerateCallback, &data) == 0) {
+        if (data.failed) {
+            // Keep the callback's own error, and clear PHYSFS_ERR_APP_CALLBACK.
+            PHYSFS_getLastErrorCode();
+        } else {
+            SDL_PhysFS_SetError("Failed to enumerate directory");
         }
-        if (enumResult == SDL_ENUM_SUCCESS) {
-            break;
-        }
+        result = false;
     }
 
-    SDL_PhysFS_FreeDirectoryFiles(directoryFiles);
+    SDL_free(dirname);
     return result;
 }
 
