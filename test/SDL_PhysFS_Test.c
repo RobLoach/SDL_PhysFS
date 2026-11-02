@@ -63,6 +63,14 @@ static bool listContains(char** files, const char* name) {
 
 // A calloc() that counts its calls, and fails the one numbered failCallocAt,
 // used to make SDL_OpenIO() fail, as it allocates its stream with SDL_calloc().
+static bool closeIoCalled = false;
+
+static bool SDLCALL closeIoFlag(void* userdata) {
+    (void)userdata;
+    closeIoCalled = true;
+    return true;
+}
+
 static SDL_calloc_func originalCalloc;
 static int callocCount = 0;
 static int failCallocAt = 0;
@@ -522,6 +530,9 @@ int main(int argc, char* argv[]) {
         SDL_assert(zipData != NULL);
         SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, zipSize, "test.zip", "zip"));
         SDL_assert(SDL_PhysFS_Exists("zip/test.txt"));
+
+        // Mounting the same newDir again fails, rather than silently doing nothing.
+        SDL_assert(SDL_PhysFS_MountFromMemory((const unsigned char*)zipData, zipSize, "test.zip", "zip2") == false);
         {
             size_t size;
             const char* text = (const char*)SDL_PhysFS_LoadFile("zip/test.txt", &size);
@@ -539,6 +550,11 @@ int main(int argc, char* argv[]) {
         SDL_assert(io != NULL);
         SDL_assert(SDL_PhysFS_MountFromIO(io, "testio.zip", "zipio", true));
         SDL_assert(SDL_PhysFS_Exists("zipio/test.txt"));
+
+        // Mounting the same newDir again fails, and still closes the stream.
+        SDL_IOStream* io2 = SDL_PhysFS_IOFromFile("res/test.zip");
+        SDL_assert(io2 != NULL);
+        SDL_assert(SDL_PhysFS_MountFromIO(io2, "testio.zip", "zipio2", true) == false);
         {
             size_t size;
             const char* text = (const char*)SDL_PhysFS_LoadFile("zipio/test.txt", &size);
@@ -547,6 +563,18 @@ int main(int argc, char* argv[]) {
             SDL_free((void*)text);
         }
         SDL_assert(SDL_PhysFS_Unmount("testio.zip"));
+    }
+
+    // SDL_PhysFS_MountFromIO closes the stream on invalid parameters too.
+    {
+        SDL_IOStreamInterface iface;
+        SDL_INIT_INTERFACE(&iface);
+        iface.close = closeIoFlag;
+        closeIoCalled = false;
+        SDL_IOStream* io = SDL_OpenIO(&iface, NULL);
+        SDL_assert(io != NULL);
+        SDL_assert(SDL_PhysFS_MountFromIO(io, NULL, "nullio", true) == false);
+        SDL_assert(closeIoCalled);
     }
 
     // SDL_PhysFS_CreateDirectory / SDL_PhysFS_RemovePath

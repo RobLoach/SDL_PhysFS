@@ -412,7 +412,8 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
  * @param newDir Filename that can represent this stream.
  * @param mountPoint The location in the tree that the archive will be mounted.
  *
- * @return true on success, false otherwise.
+ * @return true on success, false otherwise, including when newDir is already
+ *         mounted.
  *
  * @see SDL_PhysFS_Mount()
  * @see SDL_PhysFS_MountFromIO()
@@ -421,6 +422,12 @@ bool SDL_PhysFS_Mount(const char* newDir, const char* mountPoint) {
 bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, const char* newDir, const char* mountPoint) {
     if (dataSize == 0) {
         SDL_SetError("SDL_PhysFS_MountFromMemory: Cannot mount a data size of 0");
+        return false;
+    }
+
+    // PhysFS silently ignores mounting a newDir that is already mounted.
+    if (newDir != NULL && PHYSFS_getMountPoint(newDir) != NULL) {
+        SDL_SetError("SDL_PhysFS_MountFromMemory: '%s' is already mounted", newDir);
         return false;
     }
 
@@ -444,13 +451,27 @@ bool SDL_PhysFS_MountFromMemory(const unsigned char *fileData, size_t dataSize, 
  * @param mountPoint The location in the tree that the archive will be mounted.
  * @param closeio if true, calls SDL_CloseIO() on src before returning, even in the case of an error.
  *
- * @return true on success, false otherwise.
+ * @return true on success, false otherwise, including when newDir is already
+ *         mounted.
  *
  * @see SDL_PhysFS_Mount()
  */
 bool SDL_PhysFS_MountFromIO(SDL_IOStream* src, const char* newDir, const char* mountPoint, bool closeio) {
     if (src == NULL || newDir == NULL) {
+        if (src != NULL && closeio) {
+            SDL_CloseIO(src);
+        }
         return SDL_InvalidParamError("src or newDir");
+    }
+
+    // PhysFS silently ignores mounting a newDir that is already mounted, which
+    // would leak the loaded buffer.
+    if (PHYSFS_getMountPoint(newDir) != NULL) {
+        if (closeio) {
+            SDL_CloseIO(src);
+        }
+        SDL_SetError("SDL_PhysFS_MountFromIO: '%s' is already mounted", newDir);
+        return false;
     }
 
     size_t dataSize = 0;
