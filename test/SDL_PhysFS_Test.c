@@ -404,6 +404,69 @@ int main(int argc, char* argv[]) {
         SDL_CloseIO(io);
     }
 
+    // A short read at the end of the file is not an error.
+    {
+        SDL_IOStream* io = SDL_PhysFS_IOFromFile("res/test.txt");
+        SDL_assert(io != NULL);
+        char buffer[64];
+        SDL_assert(SDL_ReadIO(io, buffer, sizeof(buffer)) == 13);
+        SDL_assert(SDL_GetIOStatus(io) != SDL_IO_STATUS_ERROR);
+        SDL_assert(SDL_ReadIO(io, buffer, sizeof(buffer)) == 0);
+        SDL_assert(SDL_GetIOStatus(io) == SDL_IO_STATUS_EOF);
+        SDL_CloseIO(io);
+    }
+
+    // Reading a write-only stream sets an SDL error.
+    {
+        PHYSFS_File* handle = PHYSFS_openWrite("readfail.txt");
+        SDL_assert(handle != NULL);
+        SDL_IOStream* io = SDL_PhysFS_OpenIO(handle);
+        SDL_assert(io != NULL);
+        char buffer[4];
+        SDL_assert(SDL_ReadIO(io, buffer, sizeof(buffer)) == 0);
+        SDL_assert(SDL_GetIOStatus(io) == SDL_IO_STATUS_WRITEONLY);
+        SDL_assert(SDL_strstr(SDL_GetError(), "Failed to read file") != NULL);
+        SDL_assert(SDL_strstr(SDL_GetError(), PHYSFS_getErrorByCode(PHYSFS_ERR_OPEN_FOR_WRITING)) != NULL);
+        SDL_assert(SDL_CloseIO(io));
+        SDL_assert(SDL_PhysFS_RemovePath("readfail.txt"));
+    }
+
+    // IO callbacks set an error when given a NULL handle.
+    {
+        char buffer[4];
+        SDL_IOStatus status;
+
+        SDL_ClearError();
+        SDL_assert(SDL_PhysFS_GetIOSize(NULL) == -1);
+        SDL_assert(SDL_GetError()[0] != '\0');
+
+        SDL_ClearError();
+        SDL_assert(SDL_PhysFS_SeekIO(NULL, 0, SDL_IO_SEEK_SET) == -1);
+        SDL_assert(SDL_GetError()[0] != '\0');
+
+        SDL_ClearError();
+        status = SDL_IO_STATUS_READY;
+        SDL_assert(SDL_PhysFS_ReadIO(NULL, buffer, sizeof(buffer), &status) == 0);
+        SDL_assert(status == SDL_IO_STATUS_ERROR);
+        SDL_assert(SDL_GetError()[0] != '\0');
+
+        SDL_ClearError();
+        status = SDL_IO_STATUS_READY;
+        SDL_assert(SDL_PhysFS_WriteIO(NULL, "data", 4, &status) == 0);
+        SDL_assert(status == SDL_IO_STATUS_ERROR);
+        SDL_assert(SDL_GetError()[0] != '\0');
+
+        SDL_ClearError();
+        status = SDL_IO_STATUS_READY;
+        SDL_assert(SDL_PhysFS_FlushIO(NULL, &status) == false);
+        SDL_assert(status == SDL_IO_STATUS_ERROR);
+        SDL_assert(SDL_GetError()[0] != '\0');
+
+        SDL_ClearError();
+        SDL_assert(SDL_PhysFS_CloseIO(NULL) == false);
+        SDL_assert(SDL_GetError()[0] != '\0');
+    }
+
     // The PhysFS allocator callbacks refuse sizes that cannot be allocated,
     // rather than truncating them to a size_t on 32-bit platforms.
     SDL_assert(SDL_PhysFS_AllocatorMalloc(SDL_MAX_UINT64) == NULL);
