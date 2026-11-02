@@ -100,20 +100,22 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
  *
  * @see https://github.com/DanielGibson/Snippets/blob/master/SDL_stbimage.h
  */
-#define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_RW(SDL_PhysFS_IOFromFile(filename), 1))
+#define SDL_PhysFS_STBIMG_Load(filename) (STBIMG_Load_IO(SDL_PhysFS_IOFromFile(filename), true))
 #endif  // SDL_PhysFS_STBIMG_Load
 
 #ifndef SDL_PhysFS_MIX_LoadAudio
 /**
- * Load a supported audio format with SDL_mixer into a music object through PhysFS.
+ * Load a supported audio format with SDL3_mixer through PhysFS.
  *
+ * @param mixer The MIX_Mixer* the audio will be played on, or NULL.
  * @param filename A const char* representing the file to load from PhysFS.
+ * @param predecode A bool; true to decode the whole file into memory up front.
  *
- * @return The Mix_Music*, or NULL on failure. Use SDL_GetError() to get more information.
+ * @return The MIX_Audio*, or NULL on failure. Use SDL_GetError() to get more information.
  *
- * @see https://github.com/libsdl-org/SDL_mixer
+ * @see https://wiki.libsdl.org/SDL3_mixer/MIX_LoadAudio_IO
  */
-#define SDL_PhysFS_MIX_LoadAudio(filename) (Mix_LoadAudio_IO(SDL_PhysFS_IOFromFile(filename), 1))
+#define SDL_PhysFS_MIX_LoadAudio(mixer, filename, predecode) (MIX_LoadAudio_IO(mixer, SDL_PhysFS_IOFromFile(filename), predecode, true))
 #endif  // SDL_PhysFS_MIX_LoadAudio
 
 #ifndef SDL_PhysFS_TTF_OpenFont
@@ -121,9 +123,9 @@ SDL_PHYSFS_DEF SDL_IOStream *SDL_PhysFS_OpenIO(PHYSFS_File *handle);
  * Load a font with SDL_ttf from PhysFS, at the given size.
  *
  * @param filename A const char* representing the file to load from PhysFS.
- * @param ptsize Integer point size to use for the newly-opened font
+ * @param ptsize A float point size to use for the newly-opened font.
  *
- * @return The TTF_Font*, or NULL on failure.
+ * @return The TTF_Font*, or NULL on failure. Use SDL_GetError() to get more information.
  *
  * @see https://wiki.libsdl.org/SDL3_ttf/TTF_OpenFontIO
  */
