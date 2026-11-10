@@ -229,7 +229,9 @@ static const PHYSFS_Archiver failingArchiver = {
 };
 
 int main(int argc, char* argv[]) {
-    (void)argc;
+    // Write into the directory given by CTest, rather than the real user pref
+    // path, so that running the tests leaves nothing behind.
+    const char* writeRoot = argc > 1 ? argv[1] : "write";
 
     // SDL_Init
     SDL_assert(SDL_Init(0));
@@ -249,14 +251,18 @@ int main(int argc, char* argv[]) {
     // SDL_PhysFS_InitEx
     SDL_assert(SDL_PhysFS_InitEx(argv[0], "SDL_PhysFS", "Test"));
 
-    // SDL_PhysFS_SetWriteDir / SDL_PhysFS_GetWriteDir
+    // SDL_PhysFS_SetWriteDir / SDL_PhysFS_GetWriteDir, swapping the pref path
+    // that SDL_PhysFS_InitEx() mounted for the test's own write directory.
     {
         char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
         SDL_assert(prefPath != NULL);
-        SDL_assert(SDL_PhysFS_SetWriteDir(prefPath));
+        SDL_assert(SDL_PhysFS_Unmount(prefPath));
+        SDL_free(prefPath);
+        SDL_assert(SDL_CreateDirectory(writeRoot));
+        SDL_assert(SDL_PhysFS_SetWriteDir(writeRoot));
+        SDL_assert(SDL_PhysFS_Mount(writeRoot, "pref"));
         SDL_assert(SDL_PhysFS_GetWriteDir() != NULL);
         SDL_assert(SDL_strlen(SDL_PhysFS_GetWriteDir()) > 0);
-        SDL_free(prefPath);
     }
 
     // SDL_PhysFS_Mount
@@ -764,6 +770,10 @@ int main(int argc, char* argv[]) {
     // SDL_PhysFS_Unmount
     SDL_assert(SDL_PhysFS_Unmount("resources") == true);
 
+    // Clean up the files written above.
+    SDL_assert(SDL_PhysFS_RemovePath("test.txt"));
+    SDL_assert(SDL_PhysFS_RemovePath("empty.txt"));
+
     // SDL_PhysFS_Quit
     SDL_assert(SDL_PhysFS_Quit() == true);
 
@@ -775,11 +785,8 @@ int main(int argc, char* argv[]) {
 
         // PhysFS only hands a path that is not a directory to an archiver, so
         // the write directory has to be a file.
-        char* prefPath = SDL_GetPrefPath("SDL_PhysFS", "Test");
-        SDL_assert(prefPath != NULL);
         char* writeDir = NULL;
-        SDL_assert(SDL_asprintf(&writeDir, "%swritedir." FAILING_EXTENSION, prefPath) > 0);
-        SDL_free(prefPath);
+        SDL_assert(SDL_asprintf(&writeDir, "%s/writedir." FAILING_EXTENSION, writeRoot) > 0);
         SDL_IOStream* file = SDL_IOFromFile(writeDir, "wb");
         SDL_assert(file != NULL);
         SDL_assert(SDL_CloseIO(file));
