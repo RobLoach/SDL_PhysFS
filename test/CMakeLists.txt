@@ -73,6 +73,17 @@ foreach(target
     add_test(NAME ${target} COMMAND ${target})
 endforeach()
 
+# SDL_PhysFS_Test writes into a fresh "write" directory under its working
+# directory, the build tree, rather than the real user pref path.
+set(SDL_PhysFS_TestWriteDir "${CMAKE_CURRENT_BINARY_DIR}/write")
+add_test(NAME SDL_PhysFS_Test_Clean
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${SDL_PhysFS_TestWriteDir}"
+)
+set_tests_properties(SDL_PhysFS_Test_Clean PROPERTIES FIXTURES_SETUP SDL_PhysFS_WriteDir)
+set_tests_properties(SDL_PhysFS_Test PROPERTIES
+    FIXTURES_REQUIRED SDL_PhysFS_WriteDir
+)
+
 # Resources
 file(GLOB resources resources/*)
 set(test_resources)
